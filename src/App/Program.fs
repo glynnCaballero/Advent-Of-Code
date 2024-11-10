@@ -1,5 +1,4 @@
-﻿open System
-open Utilities
+﻿open Utilities
 
 [<EntryPoint>]
 let main args =

@@ -85,7 +85,7 @@ module Day5 =
                         // Group all the ranges including the title.
                         (acc, item :: rangeGroupings))
                 ([], [])
-            |> (fun (a, b) -> List.rev b :: a) // The last doesn't have the empty space above the title
+            |> (fun (a, b) -> List.rev b :: a) // The last chunk doesn't have the empty space above the title
             |> Seq.filter (fun chunk -> chunk <> [])
             |> Seq.rev
             |> Seq.map toTuples

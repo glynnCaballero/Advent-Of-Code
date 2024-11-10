@@ -9,9 +9,4 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Solutions\Solutions.fsproj" />
-    <ProjectReference Include="..\Utilities\Utilities.fsproj" />
-  </ItemGroup>
-
 </Project>
