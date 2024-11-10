@@ -3,7 +3,7 @@
 open System.IO
 
 
-module Day5 =
+module public Day5 =
 
     let splitIntoThree (s: string) =
         match s.Split(" ") with
@@ -42,20 +42,22 @@ module Day5 =
             match applicableRange with
             | Some(rangeValue, rangeStart, range) ->
                 let intersectStart = max startSeed rangeStart
-                let intersectEnd = min (startSeed + seedRange- 1L) (rangeStart + range- 1L)
+                let intersectEnd = min (startSeed + seedRange - 1L) (rangeStart + range - 1L)
                 let intersectRange = (intersectEnd - intersectStart) + 1L
                 let operation = rangeValue - rangeStart
 
                 let mappedSeed = (intersectStart + operation, intersectRange)
 
                 let remainingRange = seedRange - intersectRange
-                let newStartSeed = 
-                    if intersectStart > startSeed  then
+
+                let newStartSeed =
+                    if intersectStart > startSeed then
                         startSeed
                     else
                         intersectEnd + 1L
 
                 let newProcessedSeeds = processedSeeds @ [ mappedSeed ]
+
                 if remainingRange > 0 then
                     applyRangePart2 (newStartSeed, remainingRange) chunk newProcessedSeeds
                 else
@@ -100,7 +102,7 @@ module Day5 =
             |> Seq.min
 
         // answer part 2: for each seed range (L,R), find the interecting seed values (destinationValue,x,y) from the mapping chunks e.g. Seed-to-soil...
-        // if intersect, apply mapping operation to intersected values; else seed range stays and no operation is applied; 
+        // if intersect, apply mapping operation to intersected values; else seed range stays and no operation is applied;
         // If partial intersect, process remaining seed values before the intersect or after the intersect;
         // move to next seed
         // https://excalidraw.com/#json=X4pR1JpoNc76sGF93n9nE,hTpaDTdMPPhpN_m0xKCTuA
@@ -122,3 +124,36 @@ module Day5 =
         printf "Part 1: %A" part1Answer
         printf "\nPart 2: %A" (part2Answer |> Seq.map (fun (seedStart, seedRange) -> seedStart) |> Seq.min)
         printf "\n Seed count: %A" (part2Answer |> Seq.map (fun (seedStart, seedRange) -> seedRange) |> Seq.sum)
+
+module Day6 =
+    let solvePart1 (time, target) =
+        let times = [ for x in 1L..time -> (time - x) * x ]
+        times |> List.where (fun el -> el > target) |> List.length
+
+    let solve filePath =
+        let input =
+            File.ReadLines filePath
+            |> Seq.map (fun string -> string.Split(" "))
+            |> Seq.map (fun row -> row |> Seq.where (fun string -> string.Length > 0))
+
+        // The two rows of the input. Time:, and Distance
+        let time = Seq.head input
+        let distance = Seq.last input
+
+        let part1Answer =
+            Seq.zip time distance
+            |> Seq.tail
+            |> Seq.map (fun (time, target) -> (int64 time, int64 target))
+            |> Seq.map solvePart1
+            |> Seq.reduce (fun acc el -> acc * el)
+
+        // output |> Seq.iter (printf "\n%A")
+        part1Answer |> (printf "\n Part 1 Answer: %A")
+
+
+        let part2Time = time |> Seq.tail |> Seq.reduce (fun acc el -> acc + el)
+        let part2Distance = distance |> Seq.tail |> Seq.reduce (fun acc el -> acc + el)
+        let part2Answer = solvePart1 (int64 part2Time,int64 part2Distance)
+        printfn "\n Part 2%A" (part2Time, part2Distance, part2Answer)
+
+        filePath
