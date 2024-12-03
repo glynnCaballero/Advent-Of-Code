@@ -6,12 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Program.fs" />
+    <Compile Include="App.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Solutions\Solutions.fsproj" />
     <ProjectReference Include="..\Utilities\Utilities.fsproj" />
+    <ProjectReference Include="..\2024\2024.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Argu" Version="6.2.4" />
   </ItemGroup>
 
 </Project>

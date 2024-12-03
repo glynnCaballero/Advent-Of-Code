@@ -126,8 +126,11 @@ module public Day5 =
         printf "\n Seed count: %A" (part2Answer |> Seq.map (fun (seedStart, seedRange) -> seedRange) |> Seq.sum)
 
 module Day6 =
+
+    // ChaptGPT Suggested Optimal solution - a binary search for start to n instead of 1 to n.
+    // Try to find the lowest x of (time - x) * x that produces a greater value than the target.
     let solvePart1 (time, target) =
-        let times = [ for x in 1L..time -> (time - x) * x ]
+        let times = [ for x in 1L .. time -> (time - x) * x ]
         times |> List.where (fun el -> el > target) |> List.length
 
     let solve filePath =
@@ -150,10 +153,57 @@ module Day6 =
         // output |> Seq.iter (printf "\n%A")
         part1Answer |> (printf "\n Part 1 Answer: %A")
 
-
         let part2Time = time |> Seq.tail |> Seq.reduce (fun acc el -> acc + el)
         let part2Distance = distance |> Seq.tail |> Seq.reduce (fun acc el -> acc + el)
-        let part2Answer = solvePart1 (int64 part2Time,int64 part2Distance)
+        let part2Answer = solvePart1 (int64 part2Time, int64 part2Distance)
         printfn "\n Part 2%A" (part2Time, part2Distance, part2Answer)
 
-        filePath
+module Day7 =
+    let findCardValue c =
+        match c with
+        | 'A' -> 14
+        | 'K' -> 13
+        | 'Q' -> 12
+        | 'J' -> 11
+        | 'T' -> 10
+        | x -> int x - int '0'
+
+    let countCards s = 
+        s
+        |> Seq.fold (fun acc ch -> 
+            match Map.tryFind ch acc with 
+            | Some count -> Map.add ch (count+1) acc
+            | None -> Map.add ch 1 acc
+        ) Map.empty
+
+    let solve filePath =
+        let input =
+            File.ReadLines filePath
+            |> Seq.map (fun string -> string.Split(" "))
+            |> Seq.choose (fun element ->
+                match element with
+                | [| hand; amount |] -> Some(hand, amount)
+                | _ -> None)
+
+        // Solution: Apply the second grouping 33332 > 2AAAA, because it's first card is stronger. If the first cards are the same, then highest second card
+        // The first ranking is AAAAA > AAAAB > AAABB > AABBB
+        let output = 
+            input 
+            |> Seq.map (fun (hand, amount) -> (countCards hand, int amount))
+            // |> Seq.sortBy (fun (handTotal,_) -> handTotal)
+            // |> Seq.reduce
+
+
+        printf "input: %A \n" input
+        printf "output: "
+        output |> Seq.iter (printf "\n %A")
+
+// ------------------------------ TEMPLATE ------------------------------ //
+module Template =
+
+    let solve filePath =
+        let input = File.ReadLines filePath
+        let output = input
+
+        printf "\ninput: %A \n" filePath
+        printf "output: %A \n" output
