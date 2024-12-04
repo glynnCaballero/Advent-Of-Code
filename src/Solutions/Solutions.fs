@@ -206,4 +206,4 @@ module Template =
         let output = input
 
         printf "\ninput: %A \n" filePath
-        printf "output: %A \n" output
+        printf "DEMO output: %A \n" output
