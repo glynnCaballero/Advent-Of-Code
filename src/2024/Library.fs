@@ -82,3 +82,50 @@ module Day2 =
         printf "\ninput: %A \n" filePath
         output |> (printf "part1: %A \n")
         output + part2 |> (printf "part2: %A \n")
+
+
+module Day3 =
+    let findMul (s: string) = 
+        let mutable applyTuple = true
+        s
+        |> Seq.mapi (fun i el -> 
+            if el = 'd' then
+                let closureIndex = s.IndexOf(')', i) + 1
+                let command = s.Substring(i, closureIndex - i)
+                printfn "%s\n" command;
+                if command = "don't()" || command = "do()" 
+                then applyTuple <- command  = "do()"
+                else () 
+            else () // Soory
+
+            let closureIndex = s.IndexOf(')', i)
+            if el <> 'm' 
+            then None
+            else
+                let candidateTuple = s.Substring(i,(closureIndex - i))
+                let isValid = candidateTuple.Split(",")
+                let validTuple = if candidateTuple.Contains("mul(") then candidateTuple.Replace("mul(", "") else ""  
+                if Seq.length isValid = 2  && validTuple <> "" && applyTuple
+                then
+                    let isValid2 = fst (Int64.TryParse(validTuple.Split(",").[0])) && fst (Int64.TryParse ( validTuple.Split(",")[1])) 
+                    let result() = validTuple.Split(",") |> Seq.map (int) |> Seq.reduce (fun x acc -> x * acc)
+                
+                    
+                    if isValid2 then Some(validTuple,result()) else None
+                else None                
+        )
+    let solve filePath =
+        let input = File.ReadLines filePath
+        let output = 
+            input
+            |> String.concat ""
+            |> findMul
+            |> (Seq.filter (Option.isSome)) 
+            |> (Seq.map ( fun el -> el |> Option.get |> snd))
+            |> (Seq.sum)
+
+
+
+
+        printf "\ninput: %A \n" input
+        output |> (printf "part1: %A \n")
