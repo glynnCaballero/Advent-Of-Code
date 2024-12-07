@@ -27,13 +27,20 @@ let main args =
 
     // TODO Do the reflection thingy
     let solve =
-        match problem with
-        | "day5" -> fun _ -> Solutions.Day5.solve input
-        | "day6" -> fun _ -> Solutions.Day6.solve input
-        | "day7" -> fun _ -> Solutions.Day7.solve input
-        | "day1" -> fun _ -> _2024.Day1.solve input
-        | "day2" -> fun _ -> _2024.Day2.solve input
-        | "day3" -> fun _ -> _2024.Day3.solve input
+        match problemYear with
+        | "2023" ->
+            match problem with
+            | "day5" -> fun _ -> Solutions.Day5.solve input
+            | "day6" -> fun _ -> Solutions.Day6.solve input
+            | "day7" -> fun _ -> Solutions.Day7.solve input
+            | _ -> fun _ -> Solutions.Template.solve input
+        | "2024" ->
+            match problem with
+            | "day1" -> fun _ -> _2024.Day1.solve input
+            | "day2" -> fun _ -> _2024.Day2.solve input
+            | "day3" -> fun _ -> _2024.Day3.solve input
+            | "day4" -> fun _ -> _2024.Day4.solve input
+            | _ -> fun _ -> Solutions.Template.solve input
         | _ -> fun _ -> Solutions.Template.solve input
     RunWithTimer (fun _ -> solve())
 

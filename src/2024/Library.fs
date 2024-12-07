@@ -129,3 +129,65 @@ module Day3 =
 
         printf "\ninput: %A \n" input
         output |> (printf "part1: %A \n")
+
+module Day4 =
+    let scan (grid: string List) (x,y) =
+        let rows = grid.Length
+        let columns = grid[0].Length
+
+        let walk (startRow, startCol) (stepRow, stepCol) =
+            let rec collectWords (r, c) acc =
+                    if r >= 0 && r < rows && c >= 0 && c < columns && String.length acc <> 2 then
+                        collectWords (r + stepRow, c + stepCol) (acc + (grid[r][c]).ToString())
+                    else
+                        acc
+            collectWords (startRow, startCol) ""
+
+        // let checkNeighbour (x1,y1) (stepRow, stepCol) = 
+        //     let nextX,nextY = x1+stepRow, y1+stepCol
+        //     if nextX >= 0 && nextX < rows && nextY >= 0 && nextY < columns then 
+        //         Some(grid[x1+stepRow][y1])
+        //     else None
+
+        seq {
+            // yield walk (x,y) (0,1)
+            // yield walk (x,y) (0,-1)
+            // yield walk (x,y) (1,0)
+            // yield walk (x,y) (-1,0)
+            yield walk (x,y) (1,1) // right down
+            yield walk (x,y) (1,-1) // left down
+            yield walk (x,y) (-1,-1) // left up
+            yield walk (x,y) (-1,1) // right up
+        }
+        // |> Seq.filter (fun el -> el.Length > 0 && (el = "XMAS" || el = "SAMX"))
+        
+    let solve filePath =
+        let input = File.ReadLines filePath |> Seq.toList
+        
+        let rows = input.Length
+        let columns = input[0].Length
+
+        let output = 
+            seq {
+                for row in 0 .. rows - 1 do
+                    for col in 0 .. columns - 1 do
+                        if input[row][col] = 'A' then yield scan input (row,col)
+            }
+            // |> Seq.concat
+            // |> Seq.filter (fun el -> el = "XMAS" || el = "SAMX") // Part one
+            // |> Seq.filter (fun el -> el |> Seq.forall (fun x -> x = "AS" || x = "AM") )
+            |> Seq.filter (fun el -> el |> Seq.filter (fun x -> x = "AS") |> Seq.length = 2 &&  el |> Seq.filter (fun x -> x = "AM") |> Seq.length = 2)
+            |> Seq.map (Seq.map (fun el -> el |> Seq.last)) // The two M's and S's must be adjacent. It's not a valid cross if MAM, or SAS; leaving the only valid cases as below
+            |> Seq.filter (fun el -> 
+                match el |> Seq.toList with
+                | ['S';'S';'M';'M'] -> true
+                | ['M';'S';'S';'M'] -> true
+                | ['M';'M';'S';'S'] -> true
+                | ['S';'M';'M';'S'] -> true
+                | _ -> false
+            )
+            // |> Seq.concat
+
+        printf "\ninput: %A \n" input
+        output |>Seq.iter (printf "part1: %A \n")
+        output |>Seq.length |> (printf "output: %A \n")
