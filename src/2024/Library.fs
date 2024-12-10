@@ -1,9 +1,11 @@
 ﻿namespace _2024
+
 open System.IO
 open System
 
 module Day1 =
-    let abs a = sqrt (a*a)
+    let abs a = sqrt (a * a)
+
     let solve filePath =
         let input = File.ReadLines filePath
         let output = input
@@ -11,71 +13,79 @@ module Day1 =
         printf "\ninput: %A \n" filePath
         printf "output: %A \n" output
 
-        input 
+        input
         |> Seq.map (fun str -> str.Split(" "))
         |> Seq.map (Seq.filter (fun str -> str <> ""))
         |> Seq.map (Seq.map (int))
-        |> Seq.fold (fun arr el -> 
-            let (left,right) = arr
-            match Seq.toList el with
-            | [a;b] -> (a :: left, b :: right)
-            | _ -> arr
+        |> Seq.fold
+            (fun arr el ->
+                let (left, right) = arr
+
+                match Seq.toList el with
+                | [ a; b ] -> (a :: left, b :: right)
+                | _ -> arr
             // arr
-        ) ([],[])
-        |> (fun (left,right) -> (List.sort left, List.sort right))
+            )
+            ([], [])
+        |> (fun (left, right) -> (List.sort left, List.sort right))
         // |> (fun (left,right) -> List.zip left right) // part 1
         // |> List.fold (fun acc (l,r) -> acc + abs(float (l - r)) ) 0.0
-        |> (fun (left,right) -> 
-            left 
-            |> List.fold (fun acc a -> 
-                let countInRight = right |> List.filter (fun b -> a = b) |> List.length
-                acc + (a*countInRight)
-            ) 0 
-        )
+        |> (fun (left, right) ->
+            left
+            |> List.fold
+                (fun acc a ->
+                    let countInRight = right |> List.filter (fun b -> a = b) |> List.length
+                    acc + (a * countInRight))
+                0)
         |> (printf "\nel: %A \n")
 
 module Day2 =
     let abs a = Math.Abs(int a)
 
     let isDescendingAscending someList =
-        let rec checkIfDescendingAscending someList direction  = 
+        let rec checkIfDescendingAscending someList direction =
             match someList with
-            | [] | [_] -> true
-            | head :: adjacent :: tail -> 
+            | []
+            | [ _ ] -> true
+            | head :: adjacent :: tail ->
                 let currentDirection = head - adjacent
-                let notBoth = 
-                    match direction with 
+
+                let notBoth =
+                    match direction with
                     | 0 -> true
-                    | x-> if x > 0 then currentDirection > 0 else currentDirection < 0
-                let distance = Math.Abs(int currentDirection) 
-                if distance > 0 && distance <= 3 && notBoth
-                then checkIfDescendingAscending (adjacent :: tail) currentDirection  else false
+                    | x -> if x > 0 then currentDirection > 0 else currentDirection < 0
+
+                let distance = Math.Abs(int currentDirection)
+
+                if distance > 0 && distance <= 3 && notBoth then
+                    checkIfDescendingAscending (adjacent :: tail) currentDirection
+                else
+                    false
 
         checkIfDescendingAscending someList 0
 
     let hasApplicableSubset someList =
-        let subsets = someList |> List.mapi(fun i _ -> someList |> List.indexed  |> List.filter (fun (j,_) -> i <> j ) |> List.map snd)
-        subsets
-        |> List.tryFind isDescendingAscending
-        |> (<>) None
-        
+        let subsets =
+            someList
+            |> List.mapi (fun i _ -> someList |> List.indexed |> List.filter (fun (j, _) -> i <> j) |> List.map snd)
+
+        subsets |> List.tryFind isDescendingAscending |> (<>) None
+
     let solve filePath =
-        let input = 
+        let input =
             File.ReadLines filePath
-            |> Seq.map (fun str -> str.Split(" ") |> Seq.map (int) |> Seq.toList) 
-        let output = 
-            input
-            |> Seq.filter isDescendingAscending
-            |> Seq.length
+            |> Seq.map (fun str -> str.Split(" ") |> Seq.map (int) |> Seq.toList)
+
+        let output = input |> Seq.filter isDescendingAscending |> Seq.length
 
         let part2 =
-            input 
+            input
             |> Seq.filter (fun els -> not (isDescendingAscending els))
             |> Seq.filter hasApplicableSubset
             |> Seq.length
 
-        let someList = [1;9;2;3];
-        hasApplicableSubset someList|> (printf "test: %A \n") 
+        let someList = [ 1; 9; 2; 3 ]
+        hasApplicableSubset someList |> (printf "test: %A \n")
         // System.Math.Abs -5
 
 
@@ -85,43 +95,59 @@ module Day2 =
 
 
 module Day3 =
-    let findMul (s: string) = 
+    let findMul (s: string) =
         let mutable applyTuple = true
+
         s
-        |> Seq.mapi (fun i el -> 
+        |> Seq.mapi (fun i el ->
             if el = 'd' then
                 let closureIndex = s.IndexOf(')', i) + 1
                 let command = s.Substring(i, closureIndex - i)
-                printfn "%s\n" command;
-                if command = "don't()" || command = "do()" 
-                then applyTuple <- command  = "do()"
-                else () 
-            else () // Soory
+                printfn "%s\n" command
+
+                if command = "don't()" || command = "do()" then
+                    applyTuple <- command = "do()"
+                else
+                    ()
+            else
+                () // Soory
 
             let closureIndex = s.IndexOf(')', i)
-            if el <> 'm' 
-            then None
+
+            if el <> 'm' then
+                None
             else
-                let candidateTuple = s.Substring(i,(closureIndex - i))
+                let candidateTuple = s.Substring(i, (closureIndex - i))
                 let isValid = candidateTuple.Split(",")
-                let validTuple = if candidateTuple.Contains("mul(") then candidateTuple.Replace("mul(", "") else ""  
-                if Seq.length isValid = 2  && validTuple <> "" && applyTuple
-                then
-                    let isValid2 = fst (Int64.TryParse(validTuple.Split(",").[0])) && fst (Int64.TryParse ( validTuple.Split(",")[1])) 
-                    let result() = validTuple.Split(",") |> Seq.map (int) |> Seq.reduce (fun x acc -> x * acc)
-                
-                    
-                    if isValid2 then Some(validTuple,result()) else None
-                else None                
-        )
+
+                let validTuple =
+                    if candidateTuple.Contains("mul(") then
+                        candidateTuple.Replace("mul(", "")
+                    else
+                        ""
+
+                if Seq.length isValid = 2 && validTuple <> "" && applyTuple then
+                    let isValid2 =
+                        fst (Int64.TryParse(validTuple.Split(",").[0]))
+                        && fst (Int64.TryParse(validTuple.Split(",")[1]))
+
+                    let result () =
+                        validTuple.Split(",") |> Seq.map (int) |> Seq.reduce (fun x acc -> x * acc)
+
+
+                    if isValid2 then Some(validTuple, result ()) else None
+                else
+                    None)
+
     let solve filePath =
         let input = File.ReadLines filePath
-        let output = 
+
+        let output =
             input
             |> String.concat ""
             |> findMul
-            |> (Seq.filter (Option.isSome)) 
-            |> (Seq.map ( fun el -> el |> Option.get |> snd))
+            |> (Seq.filter (Option.isSome))
+            |> (Seq.map (fun el -> el |> Option.get |> snd))
             |> (Seq.sum)
 
 
@@ -131,63 +157,181 @@ module Day3 =
         output |> (printf "part1: %A \n")
 
 module Day4 =
-    let scan (grid: string List) (x,y) =
+    let scan (grid: string List) (x, y) =
         let rows = grid.Length
         let columns = grid[0].Length
 
+        // walks in one direction,collecting every char, up to the limit; could also be passed as a prop
         let walk (startRow, startCol) (stepRow, stepCol) =
             let rec collectWords (r, c) acc =
-                    if r >= 0 && r < rows && c >= 0 && c < columns && String.length acc <> 2 then
-                        collectWords (r + stepRow, c + stepCol) (acc + (grid[r][c]).ToString())
-                    else
-                        acc
+                if r >= 0 && r < rows && c >= 0 && c < columns && String.length acc <> 2 then
+                    collectWords (r + stepRow, c + stepCol) (acc + (grid[r][c]).ToString())
+                else
+                    acc
+
             collectWords (startRow, startCol) ""
 
-        // let checkNeighbour (x1,y1) (stepRow, stepCol) = 
-        //     let nextX,nextY = x1+stepRow, y1+stepCol
-        //     if nextX >= 0 && nextX < rows && nextY >= 0 && nextY < columns then 
-        //         Some(grid[x1+stepRow][y1])
-        //     else None
-
+        // Starting from the centre walk in desired directions
         seq {
             // yield walk (x,y) (0,1)
             // yield walk (x,y) (0,-1)
             // yield walk (x,y) (1,0)
             // yield walk (x,y) (-1,0)
-            yield walk (x,y) (1,1) // right down
-            yield walk (x,y) (1,-1) // left down
-            yield walk (x,y) (-1,-1) // left up
-            yield walk (x,y) (-1,1) // right up
+            yield walk (x, y) (1, 1) // right down
+            yield walk (x, y) (1, -1) // left down
+            yield walk (x, y) (-1, -1) // left up
+            yield walk (x, y) (-1, 1) // right up
         }
-        // |> Seq.filter (fun el -> el.Length > 0 && (el = "XMAS" || el = "SAMX"))
-        
+    // |> Seq.filter (fun el -> el.Length > 0 && (el = "XMAS" || el = "SAMX"))
+
     let solve filePath =
         let input = File.ReadLines filePath |> Seq.toList
-        
+
         let rows = input.Length
         let columns = input[0].Length
 
-        let output = 
+        let output =
             seq {
                 for row in 0 .. rows - 1 do
                     for col in 0 .. columns - 1 do
-                        if input[row][col] = 'A' then yield scan input (row,col)
+                        if input[row][col] = 'A' then
+                            yield scan input (row, col)
             }
             // |> Seq.concat
             // |> Seq.filter (fun el -> el = "XMAS" || el = "SAMX") // Part one
             // |> Seq.filter (fun el -> el |> Seq.forall (fun x -> x = "AS" || x = "AM") )
-            |> Seq.filter (fun el -> el |> Seq.filter (fun x -> x = "AS") |> Seq.length = 2 &&  el |> Seq.filter (fun x -> x = "AM") |> Seq.length = 2)
+            |> Seq.filter (fun el ->
+                el |> Seq.filter (fun x -> x = "AS") |> Seq.length = 2
+                && el |> Seq.filter (fun x -> x = "AM") |> Seq.length = 2)
             |> Seq.map (Seq.map (fun el -> el |> Seq.last)) // The two M's and S's must be adjacent. It's not a valid cross if MAM, or SAS; leaving the only valid cases as below
-            |> Seq.filter (fun el -> 
+            |> Seq.filter (fun el ->
                 match el |> Seq.toList with
-                | ['S';'S';'M';'M'] -> true
-                | ['M';'S';'S';'M'] -> true
-                | ['M';'M';'S';'S'] -> true
-                | ['S';'M';'M';'S'] -> true
-                | _ -> false
-            )
-            // |> Seq.concat
+                | [ 'S'; 'S'; 'M'; 'M' ] -> true
+                | [ 'M'; 'S'; 'S'; 'M' ] -> true
+                | [ 'M'; 'M'; 'S'; 'S' ] -> true
+                | [ 'S'; 'M'; 'M'; 'S' ] -> true
+                | _ -> false)
+        // |> Seq.concat
 
         printf "\ninput: %A \n" input
-        output |>Seq.iter (printf "part1: %A \n")
-        output |>Seq.length |> (printf "output: %A \n")
+        output |> Seq.iter (printf "part1: %A \n")
+        output |> Seq.length |> (printf "output: %A \n")
+
+
+module Day5 =
+    open System.Collections.Generic
+    // Build the graph representing the rules
+    let buildGraph rules =
+        let adjacencyMatrix = new Dictionary<string, string list>()
+        let incomingEdges = new Dictionary<string, int>() // Say rules: a | b, b | c, a | c then {a: 0, b: 1, c: 2} because it's the count of the incoming edges (or degree)
+
+        rules
+        |> Seq.iter (fun (a, b) ->
+            if (adjacencyMatrix.ContainsKey(a) |> not) then
+                adjacencyMatrix.Add(a, [])
+
+            if (adjacencyMatrix.ContainsKey(b) |> not) then
+                adjacencyMatrix.Add(b, [])
+
+            if (incomingEdges.ContainsKey(a) |> not) then
+                incomingEdges.Add(a, 0)
+
+            if (incomingEdges.ContainsKey(b) |> not) then
+                incomingEdges.Add(b, 0)
+
+            adjacencyMatrix[a] <- adjacencyMatrix[a] @ [ b ]
+            incomingEdges[b] <- incomingEdges[b] + 1)
+
+        adjacencyMatrix, incomingEdges
+
+    // Do a topological sort of graph so we have something to check against when validating the number sequences
+    let doToplogicalSort (graph: Dictionary<string, string list>, inDegrees: Dictionary<string, int>) =
+        let rec doDequeue queue acc =
+            match queue with
+            | [] -> acc
+            | currentNode :: tail ->
+                let neighbours = graph[currentNode]
+
+                let enQueue =
+                    neighbours
+                    |> List.map (fun node ->
+                        inDegrees[node] <- inDegrees[node] - 1
+                        node, inDegrees[node])
+                    |> List.filter (fun (_, degree) -> degree = 0)
+                    |> List.map fst
+
+                doDequeue (tail @ enQueue) (acc @ [ currentNode ])
+
+        let initialQueue =
+            inDegrees
+            |> Seq.filter (fun rule -> rule.Value = 0)
+            |> Seq.map (fun el -> el.Key)
+            |> Seq.toList
+
+        let sortedList = doDequeue initialQueue []
+
+        if List.length sortedList = Seq.length graph then
+            Some(sortedList)
+        else
+            None
+        
+    let doPart1 numbers rulesMap = 
+        rulesMap
+        |> Seq.forall (fun (a, b) ->
+            let aIndex = numbers |> Seq.tryFindIndex (fun el -> el = a)
+            let bIndex = numbers |> Seq.tryFindIndex (fun el -> el = b)
+            if aIndex.IsSome && bIndex.IsSome then aIndex < bIndex else true)
+    let solvePart1 updates rulesMap  =
+        updates
+        |> Seq.map (fun (el: string) -> el.Split(",") |> List.ofArray)
+        |> Seq.map (fun numbers ->
+            let isValid = doPart1 numbers rulesMap
+            let midValue = 
+                if isValid then
+                    (int) numbers[numbers.Length / 2]
+                else
+                    0
+            midValue
+        )
+        |> Seq.sum
+    let findSubGraph numbers (graph: Dictionary<string, string list>) =
+        let subGraph = new Dictionary<string, string list>()
+
+        for number in numbers do
+            if (not (subGraph.ContainsKey number)) then subGraph[number] <- [] 
+            let neighbours = graph[number]
+            subGraph[number] <- neighbours 
+
+        subGraph
+
+
+    let solve filePath =
+        let input = File.ReadLines filePath |> Seq.toList
+        // printf "\ninput: %A \n" input
+
+        let splitIndex = input |> Seq.findIndex (fun el -> el.Length = 0)
+
+        let (rules, updates) =
+            (input |> Seq.take splitIndex, input |> Seq.skip (splitIndex + 1))
+
+        let rulesMap =
+            rules
+            |> Seq.map (fun el ->
+                match el.Split("|") with
+                | [| a; b |] -> Some(a.Trim(), b.Trim())
+                | _ -> None)
+            |> Seq.choose id
+
+        let graph, indegrees = rulesMap |> buildGraph
+
+        
+        graph |> Seq.iter (printf "rule: %A \n")
+
+        // printf "part1: %A \n" (solvePart1 updates rulesMap)        
+        let testNumbers = updates |> Seq.head |> (fun (el) -> el.Split(",") |> List.ofArray)
+        let subGraph = findSubGraph testNumbers graph 
+
+        printf "numbers: %A \n" testNumbers
+        // printf "numbers: %A \n" (doToplogicalSort (subGraph,indegrees))
+        subGraph |> Seq.iter (printf "Number: %A \n") 
+        // testNumbers |> Seq.iter (printf "Number: %A \n") 

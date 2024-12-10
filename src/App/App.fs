@@ -40,6 +40,7 @@ let main args =
             | "day2" -> fun _ -> _2024.Day2.solve input
             | "day3" -> fun _ -> _2024.Day3.solve input
             | "day4" -> fun _ -> _2024.Day4.solve input
+            | "day5" -> fun _ -> _2024.Day5.solve input
             | _ -> fun _ -> Solutions.Template.solve input
         | _ -> fun _ -> Solutions.Template.solve input
     RunWithTimer (fun _ -> solve())
