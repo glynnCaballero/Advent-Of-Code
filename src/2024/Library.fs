@@ -270,11 +270,14 @@ module Day5 =
 
         let sortedList = doDequeue initialQueue []
 
+        // printf "\n%A" sortedList
+
         if List.length sortedList = Seq.length graph then
             Some(sortedList)
         else
             None
-        
+    
+    // i don't think I need to do this. I.e. the topological sort can find these I think...
     let doPart1 numbers rulesMap = 
         rulesMap
         |> Seq.forall (fun (a, b) ->
@@ -291,18 +294,24 @@ module Day5 =
                     (int) numbers[numbers.Length / 2]
                 else
                     0
-            midValue
+            isValid,numbers,midValue
         )
-        |> Seq.sum
+        // |> Seq.sum
     let findSubGraph numbers (graph: Dictionary<string, string list>) =
         let subGraph = new Dictionary<string, string list>()
+        let indegree = new Dictionary<string, int>()
 
         for number in numbers do
             if (not (subGraph.ContainsKey number)) then subGraph[number] <- [] 
+            if (not (indegree.ContainsKey number)) then indegree[number] <- 0 
             let neighbours = graph[number]
-            subGraph[number] <- neighbours 
+            for neighbour in neighbours do
+                if (Seq.contains neighbour numbers) then 
+                    subGraph[number] <- subGraph[number] @ [neighbour] 
+                    if (not (indegree.ContainsKey neighbour)) then indegree[neighbour] <- 0
+                    indegree[neighbour] <- indegree[neighbour] + 1 
 
-        subGraph
+        subGraph,indegree
 
 
     let solve filePath =
@@ -327,11 +336,23 @@ module Day5 =
         
         graph |> Seq.iter (printf "rule: %A \n")
 
-        // printf "part1: %A \n" (solvePart1 updates rulesMap)        
-        let testNumbers = updates |> Seq.head |> (fun (el) -> el.Split(",") |> List.ofArray)
-        let subGraph = findSubGraph testNumbers graph 
+        printf "part1: %A \n" ((solvePart1 updates rulesMap) |> Seq.filter (fun (valid,numbers,_) -> valid) |> Seq.map (fun (_,_,mid) -> mid) |> Seq.sum)        
+        let part2Inputs = (solvePart1 updates rulesMap) |> Seq.filter (fun (valid,_,_) -> not valid) |> Seq.map (fun (_,numbers,mid) -> numbers)
+        let part2Answer = 
+            part2Inputs
+            |> Seq.map (fun numbers -> findSubGraph numbers graph)
+            |> Seq.map (doToplogicalSort)
+            |> Seq.map (fun numbers -> 
+                match numbers with
+                | Some(numbers) -> (int) numbers[numbers.Length / 2]
+                | None -> 0
+            )
+            |> Seq.sum
+        // let subGraph, subIndegree = findSubGraph testNumbers graph 
+        // let sortedSubgraph = doToplogicalSort (subGraph,subIndegree) 
 
-        printf "numbers: %A \n" testNumbers
-        // printf "numbers: %A \n" (doToplogicalSort (subGraph,indegrees))
-        subGraph |> Seq.iter (printf "Number: %A \n") 
-        // testNumbers |> Seq.iter (printf "Number: %A \n") 
+        printf "part2 Input: %A \n" part2Inputs
+        printf "part2 answer: %A \n" part2Answer
+        // subGraph |> Seq.iter (printf "Number: %A \n") 
+        // subIndegree |> Seq.iter (printf "Number: %A \n") 
+        // sortedSubgraph |> (printf "Number: %A \n") 
