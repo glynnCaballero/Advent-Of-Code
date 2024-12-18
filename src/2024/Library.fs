@@ -356,3 +356,69 @@ module Day5 =
         // subGraph |> Seq.iter (printf "Number: %A \n") 
         // subIndegree |> Seq.iter (printf "Number: %A \n") 
         // sortedSubgraph |> (printf "Number: %A \n") 
+
+module Day6 =
+
+    let rotateRight direction = 
+        match direction with
+        | (0,-1) -> (1,0) // up to right
+        | (1,0) -> (0,1) // right to down
+        | (0,1) -> (-1,0) // down to left
+        | (-1,0) -> (0,-1) // left up
+        | _ -> (0,0)
+
+    let solvePart1 initialLocation grid = 
+        let checkChar (x,y) = 
+            if y > List.length grid - 1 || y < 0  then None
+            else 
+                let row = grid |> List.item y
+
+                if x > List.length row - 1 || x < 0 then None
+                else Some(row |> List.item x) // Some char at location (x,y)
+
+        let rec walkInDirection (currentX,currentY) direction (stepCoordinates: Set<int*int>) =       
+            let dirX,dirY = direction
+            let nextLocation = (currentX + dirX, currentY + dirY)
+            let nextChar = checkChar nextLocation
+
+            printfn ("fuck %A") direction
+
+            match nextChar with
+            | Some('^') | Some('.') -> walkInDirection nextLocation direction (stepCoordinates.Add((currentX,currentY)))
+            | Some('#') -> walkInDirection (currentX, currentY) (rotateRight direction) (stepCoordinates)
+            | _ | None -> stepCoordinates
+        
+        walkInDirection initialLocation (0,-1) Set.empty   
+
+    let solve filePath =
+        let input = File.ReadLines filePath |> Seq.map (Seq.toList) |> Seq.toList
+        let startingPosition = 
+            input
+            |> List.findIndex(List.contains '^') // find row
+            |> (fun index -> input |> List.item (index), index)
+            |> (fun (row,rowIndex) -> (row |> Seq.findIndex (fun el -> el = '^')),rowIndex) // find column
+
+        let output = solvePart1 startingPosition input |> Seq.length |> (+) 1 // I guess the starting position
+
+        // input |> List.iter (printf "\ninput: %A \n")
+        (startingPosition,output) |> (printf "output: %A \n")
+
+
+
+
+
+
+
+
+
+// ------------------------------ TEMPLATE ------------------------------ //
+module Template =
+
+    let solve filePath =
+        let input = File.ReadLines filePath
+        let output = 
+            input
+            
+
+        printf "\ninput: %A \n" input
+        printf "output: %A \n" output
