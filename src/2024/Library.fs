@@ -376,20 +376,59 @@ module Day6 =
                 if x > List.length row - 1 || x < 0 then None
                 else Some(row |> List.item x) // Some char at location (x,y)
 
-        let rec walkInDirection (currentX,currentY) direction (stepCoordinates: Set<int*int>) =       
+        let mutable blockX = Set.empty
+        let mutable blockY = Set.empty
+        let mutable imaginaryBlocks = List.empty
+        let mutable naturalBlocks = List.empty
+
+        // let rec findBlockOrBoundary currentLocation (dirX,dirY) = 
+        //     let currentX,currentY = currentLocation
+        //     // let currentChar = checkChar(currentLocation) 
+        //     match checkChar(currentLocation) with
+        //     | Some('^') | Some('.') -> findBlockOrBoundary (currentX+dirX, currentY+dirY)
+        //     | Some('#') -> Some
+        //     | None -> Some
+        //     | Some(_) -> None
+
+
+        let rec walkInDirection (currentX,currentY) direction (stepCoordinates: Set<int*int*Tuple<int,int>>) =       
             let dirX,dirY = direction
             let nextLocation = (currentX + dirX, currentY + dirY)
             let nextChar = checkChar nextLocation
+            let nextDirection = rotateRight direction
 
-            printfn ("fuck %A") direction
+            let directCycle = 
+                stepCoordinates
+                |> Seq.filter (fun (a,b,c) -> a = currentX && b = currentY && c = nextDirection)
+            let extendedCycle = 
+                stepCoordinates
+                |> Seq.filter (fun (a,b,c) -> 
+                    if c = nextDirection then
+                        match nextDirection with 
+                            | (0,-1) -> a = currentX && b < currentY
+                            | (0,1)  -> a = currentX && b > currentY
+                            | (1,0)  -> a > currentX && b = currentY
+                            | (-1,0) -> a < currentX && b = currentY
+                            | _ -> false
+                    else
+                        false
+                )
+            
+            if Seq.concat [directCycle;extendedCycle] |> Seq.length > 0 then 
+                imaginaryBlocks <-  nextLocation :: imaginaryBlocks 
+
+            printfn ("currentLocation %A") (currentX,currentY,direction)
 
             match nextChar with
-            | Some('^') | Some('.') -> walkInDirection nextLocation direction (stepCoordinates.Add((currentX,currentY)))
-            | Some('#') -> walkInDirection (currentX, currentY) (rotateRight direction) (stepCoordinates)
+            | Some('^') | Some('.') -> walkInDirection nextLocation direction (stepCoordinates.Add((currentX,currentY,direction)))
+            | Some('#') -> 
+                naturalBlocks <-  nextLocation :: naturalBlocks
+                walkInDirection (currentX, currentY) nextDirection stepCoordinates
             | _ | None -> stepCoordinates
         
-        walkInDirection initialLocation (0,-1) Set.empty   
+        let positionsTraversed = walkInDirection initialLocation (0,-1) Set.empty   
 
+        positionsTraversed,(imaginaryBlocks,naturalBlocks |> Seq.distinct)
     let solve filePath =
         let input = File.ReadLines filePath |> Seq.map (Seq.toList) |> Seq.toList
         let startingPosition = 
@@ -398,10 +437,13 @@ module Day6 =
             |> (fun index -> input |> List.item (index), index)
             |> (fun (row,rowIndex) -> (row |> Seq.findIndex (fun el -> el = '^')),rowIndex) // find column
 
-        let output = solvePart1 startingPosition input |> Seq.length |> (+) 1 // I guess the starting position
+        let output = solvePart1 startingPosition input 
 
         // input |> List.iter (printf "\ninput: %A \n")
-        (startingPosition,output) |> (printf "output: %A \n")
+        (fst output |> Seq.map (fun (a,b,_) -> (a,b)) |> Set.ofSeq  |> Seq.length |> (+) 1) |> (printf "part 1: %A \n") // +1 for the initial position. Then ignore direction for part 1 answer.
+        let (imaginaryBlocks,naturalBlocks) = snd output
+        (imaginaryBlocks, imaginaryBlocks |> Seq.distinct |> Seq.length )  |> (printf "part 2: %A \n")
+        (naturalBlocks, Seq.length naturalBlocks)  |> (printf "part 2: %A \n")
 
 
 
