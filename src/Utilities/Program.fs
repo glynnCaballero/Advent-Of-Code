@@ -8,5 +8,5 @@ let RunWithTimer a =
     let output = a ()
 
     stopWatch.Stop()
-    printf "\n ------- Total Time ------- \n %d milliseconds" stopWatch.Elapsed.Milliseconds
+    printf "\n ------- Total Time ------- \n %A" stopWatch.Elapsed
     // printf "\n ------- outcome ------- \n %A " output

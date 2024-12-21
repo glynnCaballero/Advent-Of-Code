@@ -358,6 +358,7 @@ module Day5 =
         // sortedSubgraph |> (printf "Number: %A \n") 
 
 module Day6 =
+    open System.Collections.Generic
 
     let rotateRight direction = 
         match direction with
@@ -366,69 +367,77 @@ module Day6 =
         | (0,1) -> (-1,0) // down to left
         | (-1,0) -> (0,-1) // left up
         | _ -> (0,0)
+    let checkChar (x,y) grid = 
+        if y > List.length grid - 1 || y < 0  then None
+        else 
+            let row = grid |> List.item y
+
+            if x > List.length row - 1 || x < 0 then None
+            else Some(row |> List.item x) // Some char at location (x,y)
+
+    let checkChar2 (x,y) (grid: char array array) = 
+        if y > Array.length grid - 1 || y < 0  then None
+        else 
+            let row = grid |> Array.item y
+
+            if x > Array.length row - 1 || x < 0 then None
+            else Some(row |> Array.item x) // Some char at location (x,y)
+
+    let rec checkForCycle (currentX,currentY) direction (stepCoordinates: HashSet<int*int*int*int>) (grid: char array array) =       
+        let dirX,dirY = direction
+        let nextLocation = (currentX + dirX, currentY + dirY)
+        let nextChar = checkChar2 nextLocation grid
+
+        if stepCoordinates.Contains(currentX, currentY,dirX,dirY) then
+            true
+        else
+            stepCoordinates.Add(currentX,currentY,dirX,dirY) |> ignore
+            match nextChar with
+            | Some('^') | Some('.') -> checkForCycle nextLocation direction stepCoordinates grid
+            | Some('#') -> checkForCycle (currentX, currentY) (rotateRight direction) stepCoordinates grid
+            | _ | None -> false // boundary
+    
+    /// Use only the unique positions of each visited cell. 
+    /// If the direction is retained, multiple blocks are placed in the same position causing extra cycles to be counted.
+    let solvePart2 initialLocation grid path = 
+        let gridArray = grid |> List.map (Array.ofList) |> Array.ofList
+        
+        let updateGridInPlace (grid: char array array) (x, y) char =
+            let original = grid[y][x]
+            grid[y][x] <- char
+            original
+            
+        let cycles = 
+            path 
+            |> Seq.fold (fun acc (x,y) -> 
+                let original = updateGridInPlace gridArray (x, y) '#'
+                let hasCycle = checkForCycle initialLocation (0,-1) (HashSet()) gridArray
+                updateGridInPlace gridArray (x, y) original |> ignore
+                printfn "position %A" (x,y,hasCycle)
+                if hasCycle then acc + 1 else acc
+            ) 0
+        
+        cycles
 
     let solvePart1 initialLocation grid = 
-        let checkChar (x,y) = 
-            if y > List.length grid - 1 || y < 0  then None
-            else 
-                let row = grid |> List.item y
-
-                if x > List.length row - 1 || x < 0 then None
-                else Some(row |> List.item x) // Some char at location (x,y)
-
-        let mutable blockX = Set.empty
-        let mutable blockY = Set.empty
-        let mutable imaginaryBlocks = List.empty
-        let mutable naturalBlocks = List.empty
-
-        // let rec findBlockOrBoundary currentLocation (dirX,dirY) = 
-        //     let currentX,currentY = currentLocation
-        //     // let currentChar = checkChar(currentLocation) 
-        //     match checkChar(currentLocation) with
-        //     | Some('^') | Some('.') -> findBlockOrBoundary (currentX+dirX, currentY+dirY)
-        //     | Some('#') -> Some
-        //     | None -> Some
-        //     | Some(_) -> None
-
-
-        let rec walkInDirection (currentX,currentY) direction (stepCoordinates: Set<int*int*Tuple<int,int>>) =       
+        let rec walkInDirection (currentX,currentY) direction (stepCoordinates: HashSet<int*int*int*int>) =       
             let dirX,dirY = direction
             let nextLocation = (currentX + dirX, currentY + dirY)
-            let nextChar = checkChar nextLocation
-            let nextDirection = rotateRight direction
-
-            let directCycle = 
-                stepCoordinates
-                |> Seq.filter (fun (a,b,c) -> a = currentX && b = currentY && c = nextDirection)
-            let extendedCycle = 
-                stepCoordinates
-                |> Seq.filter (fun (a,b,c) -> 
-                    if c = nextDirection then
-                        match nextDirection with 
-                            | (0,-1) -> a = currentX && b < currentY
-                            | (0,1)  -> a = currentX && b > currentY
-                            | (1,0)  -> a > currentX && b = currentY
-                            | (-1,0) -> a < currentX && b = currentY
-                            | _ -> false
-                    else
-                        false
-                )
-            
-            if Seq.concat [directCycle;extendedCycle] |> Seq.length > 0 then 
-                imaginaryBlocks <-  nextLocation :: imaginaryBlocks 
+            let nextChar = checkChar nextLocation grid
 
             printfn ("currentLocation %A") (currentX,currentY,direction)
 
+            stepCoordinates.Add(currentX,currentY,dirX, dirY) |> ignore
+
             match nextChar with
-            | Some('^') | Some('.') -> walkInDirection nextLocation direction (stepCoordinates.Add((currentX,currentY,direction)))
-            | Some('#') -> 
-                naturalBlocks <-  nextLocation :: naturalBlocks
-                walkInDirection (currentX, currentY) nextDirection stepCoordinates
+            | Some('^') | Some('.') -> walkInDirection nextLocation direction stepCoordinates
+            | Some('#') -> walkInDirection (currentX, currentY) (rotateRight direction) stepCoordinates
             | _ | None -> stepCoordinates
         
-        let positionsTraversed = walkInDirection initialLocation (0,-1) Set.empty   
+        let positionsTraversed = walkInDirection initialLocation (0,-1) (HashSet())   
 
-        positionsTraversed,(imaginaryBlocks,naturalBlocks |> Seq.distinct)
+        positionsTraversed
+
     let solve filePath =
         let input = File.ReadLines filePath |> Seq.map (Seq.toList) |> Seq.toList
         let startingPosition = 
@@ -437,13 +446,11 @@ module Day6 =
             |> (fun index -> input |> List.item (index), index)
             |> (fun (row,rowIndex) -> (row |> Seq.findIndex (fun el -> el = '^')),rowIndex) // find column
 
-        let output = solvePart1 startingPosition input 
+        let traversedPositions = solvePart1 startingPosition input 
 
-        // input |> List.iter (printf "\ninput: %A \n")
-        (fst output |> Seq.map (fun (a,b,_) -> (a,b)) |> Set.ofSeq  |> Seq.length |> (+) 1) |> (printf "part 1: %A \n") // +1 for the initial position. Then ignore direction for part 1 answer.
-        let (imaginaryBlocks,naturalBlocks) = snd output
-        (imaginaryBlocks, imaginaryBlocks |> Seq.distinct |> Seq.length )  |> (printf "part 2: %A \n")
-        (naturalBlocks, Seq.length naturalBlocks)  |> (printf "part 2: %A \n")
+        let part1 = traversedPositions |> Seq.map (fun (a,b,_,_) -> (a,b)) |> Seq.distinct 
+        part1 |> Seq.length |> (printf "part 1: %A \n")
+        solvePart2 startingPosition input (HashSet(part1)) |> (printf "part 2: %A \n")
 
 
 
