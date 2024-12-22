@@ -331,12 +331,8 @@ module Day5 =
                 | _ -> None)
             |> Seq.choose id
 
-        let graph, indegrees = rulesMap |> buildGraph
-
-        
-        graph |> Seq.iter (printf "rule: %A \n")
-
-        printf "part1: %A \n" ((solvePart1 updates rulesMap) |> Seq.filter (fun (valid,numbers,_) -> valid) |> Seq.map (fun (_,_,mid) -> mid) |> Seq.sum)        
+        printf "part1: %A \n" ((solvePart1 updates rulesMap) |> Seq.filter (fun (valid,_,_) -> valid) |> Seq.map (fun (_,_,mid) -> mid) |> Seq.sum)        
+        let graph, _ = rulesMap |> buildGraph
         let part2Inputs = (solvePart1 updates rulesMap) |> Seq.filter (fun (valid,_,_) -> not valid) |> Seq.map (fun (_,numbers,mid) -> numbers)
         let part2Answer = 
             part2Inputs
@@ -454,7 +450,94 @@ module Day6 =
 
 
 
+module Day7 =
 
+    let operations = [|(+);(fun a -> fun b -> a * b);(fun (a: int64) -> (fun (b: int64) -> int64(a.ToString() + b.ToString())))|]
+    let operationsSymbols = [|'+';'*'|]
+
+    let generateOperationSequence numbers operations = 
+        let n = (Seq.length numbers) - 1 // e.g. Seq.length [a,b,c,d] - 1 = 4 - 1 = 3 
+        let k = Seq.length operations
+        let range = (float)k**n |> int
+        seq {
+            for i in 0..range-1 do
+                let mutable x = i // base 2 of index - flips between 0 
+                seq {
+                    for _ in 1..n do
+                        yield x % k
+                        x <- x / k
+                }
+                |> List.ofSeq
+        }
+        |> List.ofSeq 
+        
+
+    let applyOperations (numbers: int64 seq) operations =
+        Seq.fold2 (fun acc num op -> op acc num) (Seq.head numbers) (Seq.tail numbers) operations
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+            |> Seq.map (fun el -> 
+                let parts = el.Split(":")
+
+                match parts with
+                | [|a;b|] -> Some((int64)a, b.Trim().Split(" ") |> Array.map (int64)) // (target,numbers = [||])
+                | _ -> None
+            )
+            |> Seq.choose id
+
+        // For every pair in (3267: 81 40 27) = [(81, 40); (40, 27)]
+        // Assign default value operation = 81 * 40; 40 * 27
+        // All possible combinations 11 6 16 20
+        // (81 * 40) * 27 = ? 
+        // (81 * 40) + 27 = ?
+        // (81 + 40) * 27 = ?
+        // (81 + 40) + 27 = ?
+
+        // All possible combinations 11 6 16 20
+        // 11 * 6 * 16 * 20
+        // 11 + 6 * 16 * 20
+        // 11 + 6 + 16 * 20
+        // 11 + 6 + 16 + 20
+        // 11 * 6 + 16 + 20
+        // 11 * 6 * 16 + 20
+
+
+
+        let output = 
+            input
+            |> Seq.map (fun (target,numbers) ->
+                let operationSeq = generateOperationSequence numbers operations
+                let hasMatch = 
+                    operationSeq
+                    |> List.tryFind (fun opPositions -> 
+                        let opSeq = opPositions |> Seq.map (fun i -> operations[i])
+                        target = applyOperations numbers opSeq
+                    )
+                    |> Option.isSome
+
+                
+                target,numbers,hasMatch
+            )
+            |> Seq.filter (fun (a,b,c) -> c = true)
+            |> Seq.fold (fun acc (a,b,c) -> acc + a) ((int64)0)
+
+        printf "\n input: %A" input  
+        output |> (printf "\n output: %A") 
+        
+        
+        // let testNumbers = [|11; 6; 16; 20|]
+        // let operationSeq = generateOperationSequence testNumbers operations
+        // let testResults = 
+        //     operationSeq
+        //     |> Seq.map (fun ops ->
+        //         let aOps = ops |> Seq.map (fun i -> operations[i]) 
+        //         let bOps = ops |> Seq.map (fun i -> operationsSymbols[i]) 
+        //         applyOperations testNumbers aOps, ops, bOps
+        //     )
+        
+        // testResults |>Seq.iter (printf "\n test: %A ")
 
 
 
@@ -464,10 +547,13 @@ module Day6 =
 module Template =
 
     let solve filePath =
-        let input = File.ReadLines filePath
+        let input = 
+            File.ReadLines filePath
+        
+        
         let output = 
             input
             
 
         printf "\ninput: %A \n" input
-        printf "output: %A \n" output
+        output |> Seq.iter (printfn "output: %A \n")

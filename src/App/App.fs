@@ -19,7 +19,7 @@ let main args =
 
     let problem = results.GetResult(<@ Problem @>, defaultValue = "")
     let demoMode = results.GetResult(<@ Demo @>, defaultValue = true)
-    let problemYear = results.GetResult(<@ Year @>, defaultValue = "2023")
+    let problemYear = results.GetResult(<@ Year @>, defaultValue = "2024")
     let isDemo = if demoMode then "Demo"  else ""
     let input = $".\\problems\\{problemYear}\\{problem}{isDemo}.txt" 
 
@@ -42,6 +42,7 @@ let main args =
             | "day4" -> fun _ -> _2024.Day4.solve input
             | "day5" -> fun _ -> _2024.Day5.solve input
             | "day6" -> fun _ -> _2024.Day6.solve input
+            | "day7" -> fun _ -> _2024.Day7.solve input
             | _ -> fun _ -> Solutions.Template.solve input
         | _ -> fun _ -> Solutions.Template.solve input
     RunWithTimer (fun _ -> solve())
