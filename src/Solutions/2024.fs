@@ -454,8 +454,13 @@ module Day7 =
     |]
     let operationsSymbols = [|'+';'*'|]
 
+    // Generate all sequence operations for number of "slots" between numbers.
+    // numbers = [1;2;3;4] has open slots 2, this creates 8 total combinations for 3 operations; 4 for 2 operations. 
+    // How it works: Calculate the total operations. For each of those positions, shift the "k-based" counting system.
+    // e.g. i=0:[x%k=0%2=0,0/2=0%2=0,0], i=1:[1%2=1,1/2=0%2=0,0],i=2:[2%2=0,2/2=1%2=1,1/2=0%2=0], i=3:[3%2=1,3/2=1%2=1,1/2=0%2=0]
+    // Basically, as i heads to 4 or 8, its normal (base 10) sequence would be (0,1,2,3) which is equal to 000,100,010,110 in base 2 (2 operations) or with three operations (000,100,200,010,110,210,020,120,220,001,011..222)
     let generateOperationSequence numbers operations = 
-        let n = (Seq.length numbers) - 1 // e.g. Seq.length [a,b,c,d] - 1 = 4 - 1 = 3 
+        let n = (Seq.length numbers) - 1
         let k = Seq.length operations
         let range = (float)k**n |> int
         seq {
@@ -470,9 +475,24 @@ module Day7 =
         }
         |> List.ofSeq 
         
-
+    // This applys the sequence of operations left to right.
+    // Fact! every possible base 2 (or any k) operation sequence (000,100,010,110) lengths are equal the length of numbers minus the head (say numbers = 4, minus head is 3 )
+    // Because each operation sequence are the gaps between the numbers, which is equal to numbers without the first number.
+    // Say numbers = [1;2;3;4] -> acc = 1, tails = [2;3;4], operations = [0;1;0] = (+,*,+)
+    // i = 0: acc = 1, num = 2, op = +, return acc = 1 + 2  
+    // i = 1: acc = 3, num = 3, op = *, return acc = 3 * 3  
+    // i = 2: acc = 9, num = 4, op = +, return acc = 9 + 4
+    // acc = 13
+    //  fold2 is like zip with a folder operation. Then we loop through the pair (+,2),(*,3),(+,4) with the result being used for the next call
+    // initial is first number of list so (+ 2 1), (* 3 3), etc. as shown above  
     let applyOperations (numbers: int64 seq) operations =
-        Seq.fold2 (fun acc num op -> op acc num) (Seq.head numbers) (Seq.tail numbers) operations
+        let acc = Seq.head numbers
+        let tails = Seq.tail numbers
+
+        Seq.zip tails operations
+        |> Seq.fold (fun acc (num,op)-> op acc num) acc
+
+        // Seq.fold2 (fun acc num op -> op acc num) (Seq.head numbers) (Seq.tail numbers) operations
 
     let solve filePath =
         let input = 
@@ -522,20 +542,8 @@ module Day7 =
             |> Seq.fold (fun acc (a,b,c) -> acc + a) ((int64)0)
 
         printf "\n input: %A" input  
-        output |> (printf "\n output: %A") 
-        
-        
-        // let testNumbers = [|11; 6; 16; 20|]
-        // let operationSeq = generateOperationSequence testNumbers operations
-        // let testResults = 
-        //     operationSeq
-        //     |> Seq.map (fun ops ->
-        //         let aOps = ops |> Seq.map (fun i -> operations[i]) 
-        //         let bOps = ops |> Seq.map (fun i -> operationsSymbols[i]) 
-        //         applyOperations testNumbers aOps, ops, bOps
-        //     )
-        
-        // testResults |>Seq.iter (printf "\n test: %A ")
+        output |> (printf "\n output: %A")
+    
 
 
 module Day8 =
@@ -543,13 +551,15 @@ module Day8 =
     let solve filePath =
         let input = 
             File.ReadLines filePath
+            |> Seq.map (fun el -> el.ToCharArray())
         
         
         let output = 
             input
+            |> Seq.mapi (fun y rows -> rows |> Seq.mapi (fun x el -> if el <> '.' then Some(x,y) else None))
             
 
-        printf "\ninput: %A \n" input
+        printf "\ninput: %A  %A %A \n" input (2%2) (0/2)
         output |> Seq.iter (printfn "output: %A \n")
 
 
