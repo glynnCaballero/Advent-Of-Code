@@ -12,7 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Solutions\Solutions.fsproj" />
     <ProjectReference Include="..\Utilities\Utilities.fsproj" />
-    <ProjectReference Include="..\2024\2024.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

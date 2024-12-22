@@ -1,4 +1,5 @@
-﻿namespace _2024
+﻿namespace Solutions._2024
+open System.IO
 
 open System.IO
 open System
@@ -316,7 +317,6 @@ module Day5 =
 
     let solve filePath =
         let input = File.ReadLines filePath |> Seq.toList
-        // printf "\ninput: %A \n" input
 
         let splitIndex = input |> Seq.findIndex (fun el -> el.Length = 0)
 
@@ -344,14 +344,9 @@ module Day5 =
                 | None -> 0
             )
             |> Seq.sum
-        // let subGraph, subIndegree = findSubGraph testNumbers graph 
-        // let sortedSubgraph = doToplogicalSort (subGraph,subIndegree) 
 
         printf "part2 Input: %A \n" part2Inputs
         printf "part2 answer: %A \n" part2Answer
-        // subGraph |> Seq.iter (printf "Number: %A \n") 
-        // subIndegree |> Seq.iter (printf "Number: %A \n") 
-        // sortedSubgraph |> (printf "Number: %A \n") 
 
 module Day6 =
     open System.Collections.Generic
@@ -452,7 +447,11 @@ module Day6 =
 
 module Day7 =
 
-    let operations = [|(+);(fun a -> fun b -> a * b);(fun (a: int64) -> (fun (b: int64) -> int64(a.ToString() + b.ToString())))|]
+    let operations = [|
+        (+);
+        (fun a -> fun b -> a * b);
+        (fun (a: int64) -> (fun (b: int64) -> int64(a.ToString() + b.ToString()))); // Part 2 solve
+    |]
     let operationsSymbols = [|'+';'*'|]
 
     let generateOperationSequence numbers operations = 
@@ -461,7 +460,7 @@ module Day7 =
         let range = (float)k**n |> int
         seq {
             for i in 0..range-1 do
-                let mutable x = i // base 2 of index - flips between 0 
+                let mutable x = i // base 2 of index - flips between 0 and 1
                 seq {
                     for _ in 1..n do
                         yield x % k
@@ -487,9 +486,8 @@ module Day7 =
             )
             |> Seq.choose id
 
-        // For every pair in (3267: 81 40 27) = [(81, 40); (40, 27)]
-        // Assign default value operation = 81 * 40; 40 * 27
-        // All possible combinations 11 6 16 20
+        // For number sequence 81 40 27 apply every possible combination of operations
+        // All possible combinations 81 40 27
         // (81 * 40) * 27 = ? 
         // (81 * 40) + 27 = ?
         // (81 + 40) * 27 = ?
@@ -540,6 +538,19 @@ module Day7 =
         // testResults |>Seq.iter (printf "\n test: %A ")
 
 
+module Day8 =
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+        
+        
+        let output = 
+            input
+            
+
+        printf "\ninput: %A \n" input
+        output |> Seq.iter (printfn "output: %A \n")
 
 
 

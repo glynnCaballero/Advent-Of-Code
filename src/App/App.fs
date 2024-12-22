@@ -30,19 +30,20 @@ let main args =
         match problemYear with
         | "2023" ->
             match problem with
-            | "day5" -> fun _ -> Solutions.Day5.solve input
-            | "day6" -> fun _ -> Solutions.Day6.solve input
-            | "day7" -> fun _ -> Solutions.Day7.solve input
+            | "day5" -> fun _ -> Solutions._2023.Day5.solve input
+            | "day6" -> fun _ -> Solutions._2023.Day6.solve input
+            | "day7" -> fun _ -> Solutions._2023.Day7.solve input
             | _ -> fun _ -> Solutions.Template.solve input
         | "2024" ->
             match problem with
-            | "day1" -> fun _ -> _2024.Day1.solve input
-            | "day2" -> fun _ -> _2024.Day2.solve input
-            | "day3" -> fun _ -> _2024.Day3.solve input
-            | "day4" -> fun _ -> _2024.Day4.solve input
-            | "day5" -> fun _ -> _2024.Day5.solve input
-            | "day6" -> fun _ -> _2024.Day6.solve input
-            | "day7" -> fun _ -> _2024.Day7.solve input
+            | "day1" -> fun _ -> Solutions._2024.Day1.solve input
+            | "day2" -> fun _ -> Solutions._2024.Day2.solve input
+            | "day3" -> fun _ -> Solutions._2024.Day3.solve input
+            | "day4" -> fun _ -> Solutions._2024.Day4.solve input
+            | "day5" -> fun _ -> Solutions._2024.Day5.solve input
+            | "day6" -> fun _ -> Solutions._2024.Day6.solve input
+            | "day7" -> fun _ -> Solutions._2024.Day7.solve input
+            | "day8" -> fun _ -> Solutions._2024.Day8.solve input
             | _ -> fun _ -> Solutions.Template.solve input
         | _ -> fun _ -> Solutions.Template.solve input
     RunWithTimer (fun _ -> solve())

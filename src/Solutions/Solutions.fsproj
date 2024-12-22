@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Solutions.fs" />
+    <Compile Include="2023.fs" />
+    <Compile Include="2024.fs" />
   </ItemGroup>
 </Project>

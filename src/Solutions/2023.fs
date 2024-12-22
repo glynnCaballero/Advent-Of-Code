@@ -1,4 +1,4 @@
-﻿namespace Solutions
+﻿namespace Solutions._2023
 
 open System.IO
 
@@ -198,6 +198,8 @@ module Day7 =
         printf "output: "
         output |> Seq.iter (printf "\n %A")
 
+namespace Solutions
+open System.IO
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
 
