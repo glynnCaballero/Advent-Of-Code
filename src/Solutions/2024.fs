@@ -455,19 +455,20 @@ module Day7 =
     let operationsSymbols = [|'+';'*'|]
 
     // Generate all sequence operations for number of "slots" between numbers.
-    // numbers = [1;2;3;4] has open slots 2, this creates 8 total combinations for 3 operations; 4 for 2 operations. 
-    // How it works: Calculate the total operations. For each of those positions, shift the "k-based" counting system.
-    // e.g. i=0:[x%k=0%2=0,0/2=0%2=0,0], i=1:[1%2=1,1/2=0%2=0,0],i=2:[2%2=0,2/2=1%2=1,1/2=0%2=0], i=3:[3%2=1,3/2=1%2=1,1/2=0%2=0]
+    // numbers = [1;2;3;4] has open slots 3 (n-1), this creates 8 total combinations for 2 operations; [1;2;3] has 4 for 2 operations, 8 for 3 operations. 
+    // How it works: Calculate the total operations k^(n-1). For each of those combination, shift the "k-based" counting system and yield the value.
+    // e.g. k=2 i=0:[x%k=0%2=0,0/2=0%2=0,0], i=1:[1%2=1,1/2=0%2=0,0],i=2:[2%2=0,2/2=1%2=1,1/2=0%2=0], i=3:[3%2=1,3/2=1%2=1,1/2=0%2=0]
     // Basically, as i heads to 4 or 8, its normal (base 10) sequence would be (0,1,2,3) which is equal to 000,100,010,110 in base 2 (2 operations) or with three operations (000,100,200,010,110,210,020,120,220,001,011..222)
+    // The resulting sequence is reverse order of the k-base equivalent, for base-2: 2 = 010, but the 
     let generateOperationSequence numbers operations = 
         let n = (Seq.length numbers) - 1
         let k = Seq.length operations
         let range = (float)k**n |> int
         seq {
             for i in 0..range-1 do
-                let mutable x = i // base 2 of index - flips between 0 and 1
+                let mutable x = i // base 2 of index - flips between 0 and 1; or base 3, cycles through 0,1,2
                 seq {
-                    for _ in 1..n do
+                    for _ in 1..n do // equal to 0..n-1
                         yield x % k
                         x <- x / k
                 }
@@ -478,7 +479,7 @@ module Day7 =
     // This applys the sequence of operations left to right.
     // Fact! every possible base 2 (or any k) operation sequence (000,100,010,110) lengths are equal the length of numbers minus the head (say numbers = 4, minus head is 3 )
     // Because each operation sequence are the gaps between the numbers, which is equal to numbers without the first number.
-    // Say numbers = [1;2;3;4] -> acc = 1, tails = [2;3;4], operations = [0;1;0] = (+,*,+)
+    // Say numbers = [1;2;3;4] => acc = 1, tails = [2;3;4], operations = [0;1;0] = (+,*,+)
     // i = 0: acc = 1, num = 2, op = +, return acc = 1 + 2  
     // i = 1: acc = 3, num = 3, op = *, return acc = 3 * 3  
     // i = 2: acc = 9, num = 4, op = +, return acc = 9 + 4
@@ -520,9 +521,7 @@ module Day7 =
         // 11 + 6 + 16 + 20
         // 11 * 6 + 16 + 20
         // 11 * 6 * 16 + 20
-
-
-
+        
         let output = 
             input
             |> Seq.map (fun (target,numbers) ->
@@ -549,18 +548,43 @@ module Day7 =
 module Day8 =
 
     let solve filePath =
-        let input = 
+        let grid = 
             File.ReadLines filePath
             |> Seq.map (fun el -> el.ToCharArray())
+        
+        let length,width = Seq.head grid |> Seq.length, Seq.length grid 
+            
+        let input = 
+            grid
+            |> Seq.mapi (fun y rows -> rows |> Seq.mapi (fun x el -> if el <> '.' then Some(x,y,el) else None))
+            |> Seq.map (Seq.choose id)
+            |> Seq.filter (fun el -> Seq.length el > 0)
+            |> Seq.concat
         
         
         let output = 
             input
-            |> Seq.mapi (fun y rows -> rows |> Seq.mapi (fun x el -> if el <> '.' then Some(x,y) else None))
+            |> Seq.map(fun (x1,y1,char1) -> (x1,y1,char1), input |> Seq.filter(fun (x,y,char) -> char = char1 && x <> x1 && y <> y1))
+            |> Seq.map(fun ((curX,curY,_),candidates) -> 
+
+                let distanceToCandidateEl = candidates |> Seq.map (fun (x,y,_) -> x - curX, y - curY) |> List.ofSeq |> Seq.filter(fun (diffX,diffY) -> abs diffX >= 2 || abs diffY >= 2 || (abs diffX + abs diffY) >= 2)
+                let antinodeCalcs = 
+                    Seq.zip candidates distanceToCandidateEl  
+                let antinodeCoordinates = 
+                    antinodeCalcs
+                    |> Seq.map (fun ((x,y,_), (diffX,diffY)) -> x+diffX,y+diffY)
+                    |> Seq.filter (fun (x,y) ->( x <= length-1 && x >= 0) && (y <= width-1 && y >= 0))
+                antinodeCoordinates
+            )
+            |> Seq.concat
+            |> Seq.distinct
+            |> Seq.sortBy (fun (_,y) -> y)
+
             
 
-        printf "\ninput: %A  %A %A \n" input (2%2) (0/2)
+        printf "\ninput: %A %A \n" (length,width) grid
         output |> Seq.iter (printfn "output: %A \n")
+        output |> Seq.length |> (printfn "output: %A \n")
 
 
 
