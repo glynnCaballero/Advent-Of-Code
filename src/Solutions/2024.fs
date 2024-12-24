@@ -359,25 +359,17 @@ module Day6 =
         | (-1,0) -> (0,-1) // left up
         | _ -> (0,0)
     let checkChar (x,y) grid = 
-        if y > List.length grid - 1 || y < 0  then None
+        if y > Seq.length grid - 1 || y < 0  then None
         else 
-            let row = grid |> List.item y
+            let row = grid |> Seq.item y
 
-            if x > List.length row - 1 || x < 0 then None
-            else Some(row |> List.item x) // Some char at location (x,y)
-
-    let checkChar2 (x,y) (grid: char array array) = 
-        if y > Array.length grid - 1 || y < 0  then None
-        else 
-            let row = grid |> Array.item y
-
-            if x > Array.length row - 1 || x < 0 then None
-            else Some(row |> Array.item x) // Some char at location (x,y)
+            if x > Seq.length row - 1 || x < 0 then None
+            else Some(row |> Seq.item x) // Some char at location (x,y)
 
     let rec checkForCycle (currentX,currentY) direction (stepCoordinates: HashSet<int*int*int*int>) (grid: char array array) =       
         let dirX,dirY = direction
         let nextLocation = (currentX + dirX, currentY + dirY)
-        let nextChar = checkChar2 nextLocation grid
+        let nextChar = checkChar nextLocation grid
 
         if stepCoordinates.Contains(currentX, currentY,dirX,dirY) then
             true
@@ -388,8 +380,9 @@ module Day6 =
             | Some('#') -> checkForCycle (currentX, currentY) (rotateRight direction) stepCoordinates grid
             | _ | None -> false // boundary
     
-    /// Use only the unique positions of each visited cell. 
-    /// If the direction is retained, multiple blocks are placed in the same position causing extra cycles to be counted.
+    /// !!! Use only the unique positions of each visited cell. If the direction is retained, multiple blocks are placed in the same position causing extra cycles to be counted. !!!
+    /// Walk the original path, and for every unique coordinate place a block, then check if that creates a cycle on the grid or not.
+    /// Part 2 essentially uses part 1's answer and now we are going to change original path and hope (early break) that we create a cycle
     let solvePart2 initialLocation grid path = 
         let gridArray = grid |> List.map (Array.ofList) |> Array.ofList
         
@@ -544,9 +537,11 @@ module Day7 =
         output |> (printf "\n output: %A")
     
 
-
+///Weirdly easy. Basically group all non '.' chars. Then pick one of them, find the chars and create the direction (and distance from the current char to the "other" char)
+/// For part 1. From the current char (it doesn't matter which, the other char will create the backward propagation towards the "current" char) to the other. Add one additional node of equal distance from current to other from the other node.
+///     E.g. cur = (0,0,T), other = (3,1,T): distance = (3,1) - (0,0) = (3,1). antinode coordinate = otherNode + distance = (3,1)+(3,1) = (6,2)
+/// For part 2. Keep adding until the boundary. So distance (3,1), other node = (3,1), first antinode (6,2), second (9,3), etc. excluding the ones outside the boundary.
 module Day8 =
-
     let solve filePath =
         let grid = 
             File.ReadLines filePath
@@ -560,22 +555,30 @@ module Day8 =
             |> Seq.map (Seq.choose id)
             |> Seq.filter (fun el -> Seq.length el > 0)
             |> Seq.concat
-        
+
+        let rec keepAddingUntilBoundary (x,y) (diffX,diffY) acc = 
+            let canX,canY = x+diffX,y+diffY
+
+            if ( canX <= length-1 && canX >= 0) && (canY <= width-1 && canY >= 0) then 
+                keepAddingUntilBoundary (canX,canY) (diffX,diffY) ((canX,canY) :: acc)
+            else 
+                acc
         
         let output = 
             input
-            |> Seq.map(fun (x1,y1,char1) -> (x1,y1,char1), input |> Seq.filter(fun (x,y,char) -> char = char1 && x <> x1 && y <> y1))
-            |> Seq.map(fun ((curX,curY,_),candidates) -> 
+            |> Seq.map(fun ((curX,curY,curChar)) -> 
+                let candidates = input |> Seq.filter(fun (x,y,char) -> char = curChar && x <> curX && y <> curY)
 
-                let distanceToCandidateEl = candidates |> Seq.map (fun (x,y,_) -> x - curX, y - curY) |> List.ofSeq |> Seq.filter(fun (diffX,diffY) -> abs diffX >= 2 || abs diffY >= 2 || (abs diffX + abs diffY) >= 2)
-                let antinodeCalcs = 
-                    Seq.zip candidates distanceToCandidateEl  
+                let distanceToCandidateEl = candidates |> Seq.map (fun (x,y,_) -> x - curX, y - curY) |> List.ofSeq
                 let antinodeCoordinates = 
-                    antinodeCalcs
-                    |> Seq.map (fun ((x,y,_), (diffX,diffY)) -> x+diffX,y+diffY)
-                    |> Seq.filter (fun (x,y) ->( x <= length-1 && x >= 0) && (y <= width-1 && y >= 0))
-                antinodeCoordinates
+                    Seq.zip candidates distanceToCandidateEl  
+                    |> Seq.map (fun ((x,y,_), (diffX,diffY)) -> keepAddingUntilBoundary (x,y) (diffX,diffY) [])
+                    |> List.ofSeq
+                    // |> Seq.filter (fun (x,y) ->( x <= length-1 && x >= 0) && (y <= width-1 && y >= 0)) // check if antinode in boundary
+                let something = candidates |> Seq.map (fun (a,b,_) -> (a,b)) |> Seq.toList
+                antinodeCoordinates @ [something]
             )
+            |> Seq.collect id
             |> Seq.concat
             |> Seq.distinct
             |> Seq.sortBy (fun (_,y) -> y)
