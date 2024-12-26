@@ -591,55 +591,46 @@ module Day8 =
 module Day9 =
 
     let solvePart1 inputString = 
-        let rec translateString s previousStringHeads result = 
-            
+        ///The problem with the demo solve is that it didn't keep the file id as a string. Instead concatenated the result (fid * range) as a string.
+        /// So when we swapped values, say the last string was suppose to be "17", it was accessed as [|...;1;7|]. So the 7 would get swapped instead of the whole block "17".
+        let rec translateString s index (result,fid) =         
             match s with
-            | "" -> result
+            | [||] -> result
             | _ -> 
-                let head= s |> Seq.head |> string
-                let tail = s |> Seq.tail |> String.Concat
+                let head= s |> Array.head |> string
+                let tail = s |> Array.tail
                 
                 let range = int head
-                let index = previousStringHeads |> Seq.length |> string // unique id of each char in the list
-                let alternator = s |> Seq.length // As we chop heads off, the tail will shrink by one. We'll use the tail length to flip between space "." or number.
-                let spaceBlock = (alternator % 2) = 0
-                let charToReplicate = if spaceBlock then "." else index
-                let translatedChars = String.replicate range charToReplicate
+                let fileBlock = (index % 2) = 0
+                let charToReplicate,nextFid = if fileBlock then string fid,(fid + 1) else ".",fid 
+                let translatedChars = Array.init range (fun _ -> charToReplicate)
 
                 printfn "index %A %A %A %A" index head range translatedChars
-                let updatedList = if not spaceBlock then head :: previousStringHeads else previousStringHeads
-                let updatedResult = result + translatedChars
-                translateString tail updatedList updatedResult
+                let updatedResult = Array.concat([|result;translatedChars|])
+                translateString tail (index + 1) (updatedResult,nextFid)
+                
 
-        let rec swapLastCharToFirstFreeSpace (inputString: string) = 
-            let lastCharIndex = inputString |> Seq.findIndexBack (fun el -> el <> '.')
-            let firstFreeSpaceIndex = inputString |> Seq.tryFindIndex (fun el -> el = '.')  
+        let rec swapLastCharToFirstFreeSpace inputString = 
+            let lastCharIndex = inputString |> Array.findIndexBack (fun el -> el <> ".")
+            let firstFreeSpaceIndex = inputString |> Array.tryFindIndex (fun el -> el = ".")  
             if firstFreeSpaceIndex.IsNone then inputString
             elif firstFreeSpaceIndex.Value > lastCharIndex  then inputString
             else 
-                let newResult = inputString.ToCharArray()
+                inputString[firstFreeSpaceIndex.Value] <- inputString[lastCharIndex]
+                inputString[lastCharIndex] <- "."
 
-                // printfn $"ssss  {lastCharIndex} {firstFreeSpaceIndex} {newResult[lastCharIndex]} {newResult[firstFreeSpaceIndex.Value]}"
-                    
-                
-                newResult[firstFreeSpaceIndex.Value] <- newResult[lastCharIndex]
-                newResult[lastCharIndex] <- '.'
-
-                swapLastCharToFirstFreeSpace (new String(newResult))
+                swapLastCharToFirstFreeSpace (inputString)
             
-        let translatedString = 
-            translateString inputString [] ""
-        
+        let translatedString = translateString inputString 0 ([||], 0)
+        printfn ("out resultString: %A") (translatedString)
         let result = 
             translatedString
             |> swapLastCharToFirstFreeSpace
         
-        printfn ("out resultString: %A %A") result translatedString
         let resultMapping =
             result
-            |> Seq.filter ((<>) '.') 
-            |> Seq.mapi (fun i el -> ( Int64.Parse(string el)) * int64 i)
-        // resultMapping |> Seq.iter (printfn ("out mappign: %A"))
+            |> Seq.mapi (fun i el -> if el = "." then int64 0 else int64 (int64 (string el) * int64 i))
+        resultMapping |> Seq.iter (printfn ("out mappign: %A"))
         
         resultMapping |> Seq.sum 
 
@@ -650,11 +641,11 @@ module Day9 =
             File.ReadLines filePath
             |> Seq.head
         
-        let output = solvePart1 input 
+        let output = solvePart1 (input.ToCharArray()) 
             
             
 
-        printf "\ninput: %A \n" input
+        // printf "\ninput: %A \n" input
         output |> (printfn "output: %A \n")
 
 
