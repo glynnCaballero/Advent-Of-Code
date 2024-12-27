@@ -702,30 +702,34 @@ module Day10 =
         )
         |> List.choose id
 
-    let rec findNine (grid: int array array) (x,y) (path,paths) = 
+    // This is a DFS because it exhaust the first neighbours sub tree first. Then the first neighbours first neighbours sub tree etc. then second first neighbour, the second first neighbours subtree etc.
+    // BFS goes first neighbours first e.g. first neighbour, second neighbour, first neighbour of first neighbour, first neighbour of second neighbour, first neighbour of the first neighbour of the firstest neighbour etc.
+    let rec findNine (grid: int array array) (x,y) path = 
         let currentElement = grid[y][x]
-        let queue = 
-            findNeighbours grid (x,y)
-            |> List.filter (fun (x,y) -> 
-                let neighbourEl = grid[y][x]
-                
-                neighbourEl - currentElement = 1
-            )
-        // printfn "asd %A" (currentElement,(x,y),queue)
-        let updatedPath = path @ [(x,y)]
+        let updatedPath = path @ [(x, y)]  // Extend the current path with the current coordinate.
+        
         if currentElement = 9 then
-            (updatedPath, updatedPath :: paths) 
-        elif List.length queue > 0 then
-            let exhaustedNeighboursPath = queue |> List.map (fun el -> findNine grid el (updatedPath,paths))
-            let something = 
-                exhaustedNeighboursPath 
-                |> List.collect snd // Collect only valid paths to nine... kinda got lucky
-            printfn "asd %A" (currentElement,(x,y),something |> List.length)
-
-            (updatedPath, something)
+            [updatedPath]  // Return the path as a single-item list.
         else
-            // Terminal node but not 9, so don't collect anything.
-            [],[]
+            let neighbors =
+                findNeighbours grid (x, y)
+                |> List.filter (fun (nx, ny) ->
+                    let neighborElement = grid[ny][nx]
+                    neighborElement - currentElement = 1
+                )
+            printfn "what %A" ((x,y),neighbors)
+            
+            // Exhausted paths from (0,0) to first neighbours [(0,1);(1,0)] to the target -> results in [ [] ; [(0,0),(0,1),(0,2),...,(0,4)]
+            // If a non target terminal node is encountered, then it will have no neighbours. The empty list is propagating back up to the initiating call.
+            // Say findNine (0,3) = [], find(0,1) = findNine(findNine (findNine (0,3))), findNine (0,2) = findNine (findNine (0,3)) = [] 
+            // If the node has neighbours like the initial call findNine (0,0), the second call (0,1) would return the original path [(0,0),(0,1)] passed down to the findNine (0,4) with the (0,4) appended.
+            // Collect would then filter emptys. Can be simplified by using findNine directly into the collect.
+            let neighbourOfNeighbours = 
+                neighbors
+                |> List.map (fun neighbor -> findNine grid neighbor updatedPath)
+                
+            neighbourOfNeighbours |> List.iter (fun  el -> el |> printfn "ssss %A %A" (x,y))
+            neighbourOfNeighbours @ [[];[]] |> List.collect id
         
 
     let solve filePath =
@@ -743,11 +747,10 @@ module Day10 =
             ) []
         let output = 
             startingPoints
-            |> Seq.map (fun startingPoint -> startingPoint, findNine input startingPoint ([],[]))
-        let part2Ans = output |> Seq.sumBy (fun (_,(_,y)) -> y |> List.length)
+            |> Seq.map (fun startingPoint -> startingPoint, findNine input startingPoint [])
+        let part2Ans = output |> Seq.sumBy (fun (_,paths) -> paths |> List.length)
         let part1Ans = 
             output 
-            |> Seq.map (fun (sp,(_,paths)) -> sp,paths )
             |> Seq.map (fun (sp,paths) -> 
                 // We only care about the paths that reach 9
                 let result = 
