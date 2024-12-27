@@ -684,8 +684,87 @@ module Day9 =
         // printf "\ninput: %A \n" input
         output |> (printfn "output: %A \n")
 
+module Day10 =
 
+    let findNeighbours grid (x,y)  =
+        let length = grid |> Array.length
+        let width = grid |> Array.head |> Array.length
+        let inBoundary (x,y) = x >= 0 && y >= 0 && x < width && y < length
+        [
+            (0,-1);
+            (0,1); 
+            (-1,0);
+            (1,0)   
+        ]
+        |> List.map (fun (dx,dy) -> 
+            let neighbourCoord = (x+dx,y+dy)
+            if (neighbourCoord |> inBoundary) then Some(neighbourCoord) else None
+        )
+        |> List.choose id
 
+    let rec findNine (grid: int array array) (x,y) (path,paths) = 
+        let currentElement = grid[y][x]
+        let queue = 
+            findNeighbours grid (x,y)
+            |> List.filter (fun (x,y) -> 
+                let neighbourEl = grid[y][x]
+                
+                neighbourEl - currentElement = 1
+            )
+        // printfn "asd %A" (currentElement,(x,y),queue)
+        let updatedPath = path @ [(x,y)]
+        if currentElement = 9 then
+            (updatedPath, updatedPath :: paths) 
+        elif List.length queue > 0 then
+            let exhaustedNeighboursPath = queue |> List.map (fun el -> findNine grid el (updatedPath,paths))
+            let something = 
+                exhaustedNeighboursPath 
+                |> List.collect snd // Collect only valid paths to nine... kinda got lucky
+            printfn "asd %A" (currentElement,(x,y),something |> List.length)
+
+            (updatedPath, something)
+        else
+            // Terminal node but not 9, so don't collect anything.
+            [],[]
+        
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+            |> Seq.map (fun el -> el.ToCharArray() |> Array.map (fun el ->  el |> string |> int ))
+            |> Seq.toArray
+        
+        let startingPoints =
+            input
+            |> Seq.indexed
+            |> Seq.fold (fun acc (y,row) ->
+                let yIndices = row |>  Array.indexed |> Array.filter (fun (x,el) -> el = 0) |> Array.map (fst)
+                acc @ (yIndices |> Seq.map (fun x -> (x,y)) |> List.ofSeq)
+            ) []
+        let output = 
+            startingPoints
+            |> Seq.map (fun startingPoint -> startingPoint, findNine input startingPoint ([],[]))
+        let part2Ans = output |> Seq.sumBy (fun (_,(_,y)) -> y |> List.length)
+        let part1Ans = 
+            output 
+            |> Seq.map (fun (sp,(_,paths)) -> sp,paths )
+            |> Seq.map (fun (sp,paths) -> 
+                // We only care about the paths that reach 9
+                let result = 
+                    paths 
+                    |> List.map (fun d -> List.last d )
+                    |> List.distinct 
+                    |> List.length
+                sp,result
+            )
+            |> Seq.sumBy (fun (_,count) -> count)
+        
+            
+
+        input |> Seq.iter (printf "\ninput: %A")
+        printfn "\n"
+        (part1Ans,part2Ans) |> (printfn "output: %A \n")
+        
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
 
