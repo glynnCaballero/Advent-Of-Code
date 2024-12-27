@@ -538,7 +538,7 @@ module Day7 =
     
 
 ///Weirdly easy. Basically group all non '.' chars. Then pick one of them, find the chars and create the direction (and distance from the current char to the "other" char)
-/// For part 1. From the current char (it doesn't matter which, the other char will create the backward propagation towards the "current" char) to the other. Add one additional node of equal distance from current to other from the other node.
+/// For part 1. From the current char to the other (it doesn't matter which comes first, the other char to the current will create the backward propagation from the "current"). Add one additional node of equal distance of the current to the other from the other node.
 ///     E.g. cur = (0,0,T), other = (3,1,T): distance = (3,1) - (0,0) = (3,1). antinode coordinate = otherNode + distance = (3,1)+(3,1) = (6,2)
 /// For part 2. Keep adding until the boundary. So distance (3,1), other node = (3,1), first antinode (6,2), second (9,3), etc. excluding the ones outside the boundary.
 module Day8 =
@@ -589,25 +589,61 @@ module Day8 =
         output |> Seq.iter (printfn "output: %A \n")
         output |> Seq.length |> (printfn "output: %A \n")
 module Day9 =
+    ///Chat GPT helper function, couldn't figure out how to end for the loop.
+    let rec findGap nums minRange =
+        let rec loop currentIndex currentGap startIndex =
+            if currentIndex >= Array.length nums  then
+                // end of array. Check if condition is met
+                if currentGap >= minRange then Some startIndex else None
+            else
+                match nums.[currentIndex] with
+                | "." ->
+                    // If we're in a gap, increase its size
+                    if currentGap = 0 then loop (currentIndex + 1) 1 currentIndex
+                    else loop (currentIndex + 1) (currentGap + 1) startIndex
+                | _ ->
+                    // If the gap ends, check if it meets the condition
+                    if currentGap >= minRange then Some startIndex
+                    else loop (currentIndex + 1) 0 0 // move to next char
+        loop 0 0 0
+
+    let solvePart2 translatedChars numbers =
+        let mutable mutableChars = Array.copy translatedChars
+        for i in 0..(List.length numbers) - 1 do
+            let (currentElement,range) = numbers |> List.item i
+            let indexOfCurrentElement = translatedChars |> Array.findIndex (fun el -> el = string currentElement)
+            let gap = findGap mutableChars range
+            
+            if gap.IsSome && gap.Value < indexOfCurrentElement then
+                for k in gap.Value..gap.Value+range-1 do
+                    mutableChars[k] <- string currentElement
+                for k in indexOfCurrentElement..indexOfCurrentElement+range-1 do
+                    mutableChars[k] <- "."
+                printfn "num %A" (currentElement,indexOfCurrentElement,gap)
+
+        
+        mutableChars
 
     let solvePart1 inputString = 
         ///The problem with the demo solve is that it didn't keep the file id as a string. Instead concatenated the result (fid * range) as a string.
         /// So when we swapped values, say the last string was suppose to be "17", it was accessed as [|...;1;7|]. So the 7 would get swapped instead of the whole block "17".
-        let rec translateString s index (result,fid) =         
+        let rec translateString s index (result,fidList) =         
             match s with
-            | [||] -> result
+            | [||] -> result,fidList
             | _ -> 
                 let head= s |> Array.head |> string
                 let tail = s |> Array.tail
+                let fid,_ = if index = 0 then 0,0 else  fidList |> List.head |> (fun (a,b) -> a+1,b) 
                 
                 let range = int head
                 let fileBlock = (index % 2) = 0
-                let charToReplicate,nextFid = if fileBlock then string fid,(fid + 1) else ".",fid 
+                let charToReplicate = if fileBlock then string fid else "." 
                 let translatedChars = Array.init range (fun _ -> charToReplicate)
+                let updatedFidList = if fileBlock then (fid,range) :: fidList else fidList 
 
-                printfn "index %A %A %A %A" index head range translatedChars
+                // printfn "index %A %A %A %A" index head range translatedChars
                 let updatedResult = Array.concat([|result;translatedChars|])
-                translateString tail (index + 1) (updatedResult,nextFid)
+                translateString tail (index + 1) (updatedResult,updatedFidList)
                 
 
         let rec swapLastCharToFirstFreeSpace inputString = 
@@ -621,20 +657,20 @@ module Day9 =
 
                 swapLastCharToFirstFreeSpace (inputString)
             
-        let translatedString = translateString inputString 0 ([||], 0)
-        printfn ("out resultString: %A") (translatedString)
-        let result = 
+        let translatedString, fidList = translateString inputString 0 ([||], [])
+        
+        let part2Ans = 
+            solvePart2 translatedString fidList
+            |> Seq.mapi (fun i el -> if el = "." then int64 0 else int64 el * int64 i)
+            |> Seq.sum
+        
+        let part1Ans = 
             translatedString
             |> swapLastCharToFirstFreeSpace
-        
-        let resultMapping =
-            result
-            |> Seq.mapi (fun i el -> if el = "." then int64 0 else int64 (int64 (string el) * int64 i))
-        resultMapping |> Seq.iter (printfn ("out mappign: %A"))
-        
-        resultMapping |> Seq.sum 
+            |> Seq.mapi (fun i el -> if el = "." then int64 0 else int64 el * int64 i)
+            |> Seq.sum
 
-
+        part1Ans,part2Ans
             
     let solve filePath =
         let input = 
