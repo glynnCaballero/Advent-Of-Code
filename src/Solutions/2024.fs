@@ -685,7 +685,6 @@ module Day9 =
         output |> (printfn "output: %A \n")
 
 module Day10 =
-
     let findNeighbours grid (x,y)  =
         let length = grid |> Array.length
         let width = grid |> Array.head |> Array.length
@@ -767,6 +766,56 @@ module Day10 =
         input |> Seq.iter (printf "\ninput: %A")
         printfn "\n"
         (part1Ans,part2Ans) |> (printfn "output: %A \n")
+
+module Day11 =
+    open System.Collections.Generic
+    let mutable dict = Dictionary<int64,list<int64>>()
+    let blink num = 
+        if dict.ContainsKey num then
+            dict[num]
+        else
+            let result = 
+                match num with
+                | 0L -> [1L]
+                | x when (string x).Length % 2 = 0 -> 
+                    let stringNum = (string x).ToCharArray()
+                    let a,b = 
+                        stringNum 
+                        |> Array.splitAt (stringNum.Length / 2) 
+                        |> (fun (a,b) -> String.Concat a, String.Concat b)
+                        |> (fun (a,b) -> int64 a, int64 b)
+                    // printfn "something %A" (stringNum, stringNum.Length / 2)
+
+                    [a;b]
+                | x -> [x*2024L]
+            dict.Add(num, result)
+            result
+
+    let rec blinkByAmount nums blinkCount blinkTarget = 
+        printf "blink: %A\n" (List.length nums, blinkCount)
+        if blinkCount = blinkTarget then
+            nums
+        else 
+            let updatedNums = 
+                nums
+                |> List.map (fun el -> blink el)
+                |> List.concat
+            blinkByAmount updatedNums (blinkCount + 1) blinkTarget
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+            |> Seq.head
+            |> (fun el -> el.Split(" "))
+            |> Seq.map (int64)
+            |> Seq.toList
+        
+        
+        let output = blinkByAmount input 0 75
+            
+
+        printf "\ninput: %A \n" input
+        (List.length output) |> (printfn "output: %A \n")
         
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
