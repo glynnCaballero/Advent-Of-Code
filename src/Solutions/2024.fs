@@ -769,38 +769,85 @@ module Day10 =
 
 module Day11 =
     open System.Collections.Generic
-    let mutable dict = Dictionary<int64,list<int64>>()
-    let blink num = 
-        if dict.ContainsKey num then
-            dict[num]
-        else
-            let result = 
-                match num with
-                | 0L -> [1L]
-                | x when (string x).Length % 2 = 0 -> 
-                    let stringNum = (string x).ToCharArray()
-                    let a,b = 
-                        stringNum 
-                        |> Array.splitAt (stringNum.Length / 2) 
-                        |> (fun (a,b) -> String.Concat a, String.Concat b)
-                        |> (fun (a,b) -> int64 a, int64 b)
-                    // printfn "something %A" (stringNum, stringNum.Length / 2)
+    open System.Collections.Concurrent
+    open FSharp.Collections.ParallelSeq
 
-                    [a;b]
-                | x -> [x*2024L]
-            dict.Add(num, result)
-            result
+    let mutable dict = ConcurrentDictionary<int64,list<int64>>()
+    let blink num1 = 
+        dict.GetOrAdd(num1, fun num -> 
+            if dict.ContainsKey num then
+                dict[num]
+            else
+                let result = 
+                    match num with
+                    | 0L -> [1L]
+                    | x when (string x).Length % 2 = 0 -> 
+                        let stringNum = (string x).ToCharArray()
+                        let a,b = 
+                            stringNum 
+                            |> Array.splitAt (stringNum.Length / 2) 
+                            |> (fun (a,b) -> String.Concat a, String.Concat b)
+                            |> (fun (a,b) -> int64 a, int64 b)
+                        // printfn "something %A" (stringNum, stringNum.Length / 2)
 
+                        [a;b]
+                    | x -> [x*2024L]
+                result
+        
+        )
+
+    // The big problem with this is the size of nums. At around depth (blinkCount) > 25 it gets way too big. Which when enumerated on, I think, causes the slowness.
+    // Even with the dict on the atomic lookup, it cost too much to keep in memory and keep expanding the nums collection and deriving properties off it etc.
     let rec blinkByAmount nums blinkCount blinkTarget = 
-        printf "blink: %A\n" (List.length nums, blinkCount)
-        if blinkCount = blinkTarget then
-            nums
-        else 
-            let updatedNums = 
-                nums
-                |> List.map (fun el -> blink el)
-                |> List.concat
-            blinkByAmount updatedNums (blinkCount + 1) blinkTarget
+        printf "blink: %A\n" (Seq.length nums, blinkCount)
+        seq {
+            if blinkCount = blinkTarget then
+                yield! nums
+            else 
+                let updatedNums = 
+                    nums
+                    |> PSeq.collect (fun el -> blink el)
+                    |> PSeq.toList
+                yield! blinkByAmount updatedNums (blinkCount + 1) blinkTarget
+        }
+
+    /// Don't actually expand the nums collection. Calculate the number of children of each num at a certain depth.
+    /// Important! store the depth (blinkCount) and the num because at different depths the num will have different return values. E.g. blink2 (17,1) = 2, blink2 (17,4) = 4, blink2 (17,7) = 9 etc.   
+    /// Can't do layer by layer calcs, as we no longer return the actual children, so we can't calculate the intermediate results (direct children's children) anymore. Instead blink2 aggregates the count already.
+    /// The dict is key for part 2, even depth 25 without it is still too slow. The sub tree calculations are too much to recalculate at large depths.
+    let rec solvePart2 nums blinkTarget =
+        let mutable localDict = Dictionary<Tuple<int64,int>,int64>()
+        
+        let rec  blink2 num blinkCount = 
+            printfn "numCalc %A" (num,blinkCount,localDict.ContainsKey((num,blinkCount)))
+            if blinkCount = blinkTarget then
+                1L
+            elif localDict.ContainsKey((num,blinkCount)) then
+                localDict[(num,blinkCount)]
+            else
+                let result = 
+                    match num with
+                    | 0L -> blink2 1 (blinkCount + 1)
+                    | x when (string x).Length % 2 = 0 -> 
+                        let stringNum = (string x).ToCharArray()
+                        let a,b = 
+                            stringNum 
+                            |> Array.splitAt (stringNum.Length / 2) 
+                            |> (fun (a,b) -> String.Concat a, String.Concat b)
+                            |> (fun (a,b) -> int64 a, int64 b)
+                        (blink2 (a) (blinkCount + 1)) + blink2 (b) (blinkCount + 1)
+                    | x -> blink2 (x*2024L) (blinkCount + 1)
+                localDict.Add((num,blinkCount), result)
+                result
+        
+        let mutable result = 0L
+
+        for root in nums do
+            let childrenCount = blink2 root 0
+            printfn "root: %A" (root,childrenCount)
+            result <- result + childrenCount
+        
+        result
 
     let solve filePath =
         let input = 
@@ -811,11 +858,12 @@ module Day11 =
             |> Seq.toList
         
         
-        let output = blinkByAmount input 0 75
+        let output = blinkByAmount ( input) 0 75 |> Seq.length // part1Ans
+        // let output = solvePart2 input 75
             
 
         printf "\ninput: %A \n" input
-        (List.length output) |> (printfn "output: %A \n")
+        output |> (printfn "output: %A \n")
         
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =

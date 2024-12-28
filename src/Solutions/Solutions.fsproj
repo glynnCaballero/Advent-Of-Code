@@ -9,4 +9,8 @@
     <Compile Include="2023.fs" />
     <Compile Include="2024.fs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Collections.ParallelSeq" Version="1.2.0" />
+  </ItemGroup>
 </Project>
