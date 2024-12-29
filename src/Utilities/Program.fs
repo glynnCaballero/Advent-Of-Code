@@ -1,5 +1,4 @@
 ﻿module Utilities
-
 open System;
 
 let RunWithTimer a =
@@ -10,3 +9,11 @@ let RunWithTimer a =
     stopWatch.Stop()
     printf "\n ------- Total Time ------- \n %A" stopWatch.Elapsed
     // printf "\n ------- outcome ------- \n %A " output
+
+let directions = 
+    seq {
+        (0,1); // up
+        (0,-1); // down
+        (-1,0); // left
+        (1,0); // right
+    }

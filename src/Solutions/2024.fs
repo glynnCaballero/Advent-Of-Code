@@ -1,7 +1,5 @@
 ﻿namespace Solutions._2024
 open System.IO
-
-open System.IO
 open System
 
 module Day1 =
@@ -864,6 +862,119 @@ module Day11 =
 
         printf "\ninput: %A \n" input
         output |> (printfn "output: %A \n")
+
+module Day12 =
+    open System.Collections.Generic
+    let inboundary grid (x1,y1) =
+        let length = grid |> Array.length
+        let width = grid |> Array.head |> Array.length
+
+        not (x1 < 0 || y1 < 0 || y1 >= length || x1 >= width)
+
+    let getPerimeter region  = 
+        region 
+        |> Seq.map (fun (_,x,y) -> Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy)))
+        |> Seq.concat
+        // |> Seq.distinct // Allow duplicates for shared boundaries.
+        |> Seq.filter (fun (x,y) -> region |> Seq.exists (fun (_,a,b) -> x = a  && y = b) |> not) // exclude tiles in the region
+
+    // this is really crude. It produces subsets, list with duplicates. 
+    let findRegions grid  =
+        let inboundary = inboundary grid
+        let mutable visited = new HashSet<Tuple<_,int,int>>()
+
+        let rec findNeighbours coord (currentNeighbours: HashSet<Tuple<_,int,int>>)=
+            let (el,x,y) = coord
+            
+            
+            if visited.Contains(coord) then
+                currentNeighbours
+            else
+                visited.Add(coord) |> ignore
+                currentNeighbours.Add(coord) |> ignore
+
+                let neighbours = 
+                    Utilities.directions
+                    |> Seq.map (fun (dx,dy) -> (x+dx,y+dy) )
+                    |> Seq.filter inboundary
+                    |> Seq.map (fun (x1,y1) -> (grid[y1][x1],x1,y1))
+                    |> Seq.filter (fun (c1,x1,y1) -> c1 = el && (currentNeighbours.Contains(c1,x1,y1) |> not))
+                    |> Seq.toList
+                printfn ("Find neighbours for coord: %A") ((el,x,y),neighbours, currentNeighbours)
+                for neighbour in neighbours do
+                    findNeighbours  neighbour currentNeighbours |> ignore
+                currentNeighbours
+
+        
+        let allCoordinates = 
+            grid
+            |> Seq.mapi (fun y row ->
+                row
+                |> Seq.mapi (fun x el -> 
+                    (el,x,y)
+                )
+            )
+            |> Seq.concat
+        
+        let mutable result = [] 
+        for coord in allCoordinates do
+            if not (visited.Contains(coord)) then
+                let region = findNeighbours coord (new HashSet<Tuple<_,int,int>>())
+                result <- region :: result
+        result
+
+    let applyPart2Grouping perimeters (region: HashSet<Tuple<_,int,int>>) = 
+        let visited = new HashSet<Tuple<int,int>>()
+        let rec findCommonNeighbour coord (currentGrouping: HashSet<Tuple<int,int>>) = 
+            if not (visited.Contains(coord)) && perimeters |> Seq.contains coord then
+                visited.Add(coord) |> ignore
+                currentGrouping.Add (coord) |> ignore
+                let x,y = coord
+                Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy)) |> Seq.iter (fun coord -> findCommonNeighbour coord currentGrouping)
+
+        let mutable result = new List<HashSet<Tuple<int,int>>>()
+        for coord in perimeters do
+            if not (visited.Contains(coord)) then
+                let sharedEdge = new HashSet<Tuple<int,int>>()
+                findCommonNeighbour coord sharedEdge
+                result.Add(sharedEdge)
+
+        let sharedEdges =  
+            perimeters
+            |> Seq.map (fun (x,y) -> 
+                let duplicates = perimeters |> Seq.filter (fun (x1,y1) -> x=x1 && y=y1)
+                if Seq.length duplicates > 1 then duplicates |> Seq.toList else []
+            )
+            |> Seq.filter (fun s -> Seq.length s > 1)
+            |> Set.ofSeq
+            |> Seq.map (Seq.head)
+            |> Seq.map (fun (x,y) -> Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy)) |> Set)
+
+        result,sharedEdges
+
+    let solvePart1 input =
+        let regions = findRegions input
+
+        printfn ("regions: %A") (regions)
+
+        let result = 
+            regions 
+            |> Seq.map (fun region -> Seq.head region |> (fun (a,_,_) -> a), region, getPerimeter region)
+            |> Seq.sortBy (fun (a,_,_) -> a)
+            
+        
+        result |> Seq.sumBy (fun (_,area,perimeter) -> (Seq.length area) * (perimeter |> Seq.length)),result
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+            |> Seq.map (fun el -> el.ToCharArray())
+            |> Seq.toArray
+        printf "\ninput: %A \n" input
+        
+        let part1Ans,result = solvePart1 input
+
+        part1Ans |> (printfn "output: %A \n")
         
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
