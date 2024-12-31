@@ -871,6 +871,8 @@ module Day12 =
 
         not (x1 < 0 || y1 < 0 || y1 >= length || x1 >= width)
 
+    let getNeighbours (x,y) =  Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy))
+
     let getPerimeter region  = 
         region 
         |> Seq.map (fun (_,x,y) -> Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy)))
@@ -919,154 +921,57 @@ module Day12 =
                 result <- region :: result
         result
 
-    let applyPart2Grouping perimeters (region: HashSet<Tuple<_,int,int>>) = 
+    let solvePart2 (region: HashSet<Tuple<_,int,int>>) = 
+        let inRegion (x,y) = region |> Seq.exists (fun (_,x1,y1) -> x1=x&&y1=y)
         
-        let findNeighbours (x,y) = 
-            Utilities.directions |> Seq.map (fun (dx,dy) -> (x+dx,y+dy))
+        let regionBoundary = 
+            region
+            |> Seq.collect (fun (c,x,y) -> 
+                let neighbours = 
+                    getNeighbours(x,y)
+                    |> Seq.filter (fun coord -> inRegion(coord) |> not)
 
-        let inRegion (x,y) = region |> Seq.exists (fun (_,x1,y1) -> x=x1 && y=y1)
-
-        let rec groupContinousPerimeters coord perimeters (currentSide: HashSet<Tuple<int,int>>) (visited: HashSet<Tuple<int,int>>) =
-            if not(visited.Contains(coord)) then
-                visited.Add coord |> ignore
-                currentSide.Add coord |> ignore
-
-                let neighbours = findNeighbours coord |> Seq.filter (fun (x1,y1) -> perimeters |> Seq.exists(fun el -> el = (x1,y1))) 
-                neighbours |> Seq.iter (fun neighbourCoord -> groupContinousPerimeters neighbourCoord perimeters currentSide visited)
-
-        let visited = new HashSet<Tuple<int,int>>()
-        let sides = 
-            perimeters
-            |> Seq.map (fun coord -> 
-                let mutable commonSide = new HashSet<Tuple<int,int>>()
-                
-                if not(visited.Contains(coord)) then 
-                    groupContinousPerimeters coord perimeters commonSide visited
-
-                commonSide
-            )
-            |> Seq.filter (fun el -> Seq.length el > 0)
-            |> Seq.map (Seq.toList)
-            |> Seq.toList
-
-        let categorizeSides =
-            sides
-            |> Seq.map (fun side ->
-                side |> Seq.exists (fun (perimeterCoord) -> 
-                    let neighbours = findNeighbours perimeterCoord
-                    let neighboursInCluster = 
-                        neighbours 
-                        |> Seq.filter (fun coord -> inRegion(coord))
-                        |> Seq.length
-                    neighboursInCluster > 1
-                ) 
+                neighbours |> Seq.map (fun coord -> ((c,x,y),coord))
             )
             |> Seq.toList
 
-        let mergeSequences (seqList) =
-            let rec merge remaining merged =
-                match remaining with
-                | [] -> merged
-                | x :: xs ->
-                    let (toMerge, notToMerge) = xs |> List.partition (fun y -> Set.intersect (Set.ofSeq x) (Set.ofSeq y) |> Set.isEmpty |> not)
-                    let mergedSet = toMerge |> List.fold (fun acc y -> Set.union acc (Set.ofSeq y)) (Set.ofSeq x)
-                    merge notToMerge (mergedSet :: merged)
+        let isRegionBoundaryNeighbours (x,y) = regionBoundary |> List.filter (fun ((_,x1,y1), _) -> x=x1&&y=y1)
+        let isBoundaryNeighbours (x,y) = regionBoundary |> List.filter (fun (_, (x1,y1)) -> x=x1&&y=y1)
+        let mutable visitedEdges = new HashSet<Tuple<Tuple<_,int,int>,Tuple<int,int>>>()
+        let rec getGrouping edge (currentGrouping: HashSet<Tuple<Tuple<_,int,int>,Tuple<int,int>>>) = 
+            let (_,x,y),boundaryCoordinate = edge
+            let coordinateNeighbours = getNeighbours (x,y) |> Seq.collect (isRegionBoundaryNeighbours)
+            let boundaryNeighbours = getNeighbours boundaryCoordinate |> Seq.collect (isBoundaryNeighbours)
             
-            merge (List.ofSeq seqList) []
-
-        let centreClusters =
-            List.zip categorizeSides sides
-            |> Seq.filter (fun (isComplex,_) -> isComplex) // Side has one node with multiple edges in the region. Corner,enclosed perimeter 
-            |> Seq.collect (fun (shit, cluster) -> 
-                let inRegionNeighbours = cluster |> List.map (fun coord -> coord,findNeighbours coord |> Seq.filter (inRegion))
-                let findAdjacentNeighbour currentCoord targetEl = inRegionNeighbours |> List.filter (fun (a,b) -> a <> currentCoord && b |> Seq.exists (fun el -> el = targetEl))
-                
-                let something = 
-                    inRegionNeighbours 
-                    |> Seq.map (fun (currentCoordinate,neighbours)  -> 
-                    let neighboursNeighbour = 
-                        neighbours
-                        |> Seq.collect findNeighbours 
-                        |> Seq.toList 
-                        |> List.filter (inRegion)
-                        |> List.map (fun x -> findAdjacentNeighbour currentCoordinate x |> Seq.toList)
-                        |> List.filter (fun el -> Seq.length el > 0)
-                        |> List.concat
-                        |> List.map (fst)
-                        |> List.collect (fun el ->  [currentCoordinate;el] |> Seq.sort |> Seq.toList )
-                        |> List.distinct
-                        // |> Seq.filter (fun (x,y) -> )
-                    
-                    // printfn "Please %A" (currentCoordinate,neighboursNeighbour)
-                    let comparitorA = neighboursNeighbour |> List.distinctBy (fun (a,b) -> a) |> List.length
-                    let comparitorB = neighboursNeighbour |> List.distinctBy (fun (a,b) -> b) |> List.length
-                    // printfn "ASdasdsadasdddd %A" (neighboursNeighbour,(comparitorA,comparitorB))
-                    if Seq.length neighboursNeighbour = 0
-                        then Some([currentCoordinate]) // Enclosed tile. Sorrounded by other chars. (probably)
-                    // elif comparitorA = comparitorB
-                    //     then None // corner piece. Has two directions. 
-                    else 
-                        Some (neighboursNeighbour |> Seq.toList)
-                    )
-                    |> Seq.choose id
-                    |> mergeSequences
-                    |> mergeSequences
-                
-                let somethingElse = 
-                    something 
-                    |> Seq.filter (fun el -> 
-                        let comparitorA = el |> Seq.distinctBy (fun (a,b) -> a) |> Seq.length
-                        let comparitorB = el |> Seq.distinctBy (fun (a,b) -> b) |> Seq.length
-                        comparitorA = comparitorB
-                    )
-                    
-
-                // printfn "Whaaay %A" ( somethingElse |> Seq.toList)
-                something |> Seq.map (fun subCluster -> (shit,subCluster))
-                // [(shit, cluster)]
-            )
-            |> Seq.toList
-            |> List.collect (fun (_,cluster) -> 
-                let mutable visited = new HashSet<Tuple<int,int>>()
-                let innerPerimeters = 
-                    cluster 
-                    |> Seq.map findNeighbours
-                    |> Seq.collect (Seq.filter (inRegion))
-
-                let groupedInnerPerimeters = 
-                    innerPerimeters
-                    |> Seq.map (fun coord -> 
-                        let mutable commonSide = new HashSet<Tuple<int,int>>()
-                
-                        if not(visited.Contains(coord)) then 
-                            groupContinousPerimeters coord innerPerimeters commonSide visited
-
-                        commonSide
-                    )
-                    |> Seq.filter (fun el -> Seq.length el > 0)
-                
-                groupedInnerPerimeters |> Seq.toList
-            ) 
-        
-        let outerPerimeter = 
-            List.zip categorizeSides sides
-            |> List.filter (fun (x,_) -> not x) 
-
+            visitedEdges.Add(edge) |> ignore
+            currentGrouping.Add(edge) |> ignore
             
+            // printfn "Current Edge %A" edge
+            // printfn "Coordinate Neighbours %A \nBoundary Neighbours %A" coordinateNeighbours boundaryNeighbours
+            
+            if Seq.length coordinateNeighbours = 0 || Seq.length boundaryNeighbours = 0 then 
+                currentGrouping
+            else
+                let nextNeighbour = coordinateNeighbours |> Seq.tryFind (fun neighbourEdge -> (boundaryNeighbours |> Seq.contains neighbourEdge) && (currentGrouping.Contains(neighbourEdge) |> not) && (visitedEdges.Contains(neighbourEdge) |> not)) 
+                match nextNeighbour with
+                | Some(edge) -> getGrouping edge currentGrouping 
+                | None -> currentGrouping
 
-        // printfn "Soemthing: %A" (List.zip sides perimeterAreaIntersect, perimeterAreaIntersect |> Seq.length)
-        outerPerimeter,centreClusters
+        let mutable sides = []
+        for edge in regionBoundary do
+            if not(visitedEdges.Contains(edge)) then
+                sides <- getGrouping edge (new HashSet<Tuple<Tuple<_,int,int>,Tuple<int,int>>>()) :: sides
+
+        // printfn "side %A" (regionBoundary)
+
+        sides |> Seq.distinct |> Seq.length
 
     let solvePart1 input =
         let regions = findRegions input
-
-        // printfn ("regions: %A") (regions)
-
         let result = 
             regions 
             |> Seq.map (fun region -> Seq.head region |> (fun (a,_,_) -> a), region, getPerimeter region)
             |> Seq.sortBy (fun (a,_,_) -> a)
-        
         result |> Seq.sumBy (fun (_,area,perimeter) -> (Seq.length area) * (perimeter |> Seq.length)),result
 
     let solve filePath =
@@ -1081,16 +986,11 @@ module Day12 =
         
         let part2Ans = 
             result 
-            |> Seq.sumBy (fun (char,region,perimeter) -> 
-                let part2Perimeters,insidePerimeterSides = applyPart2Grouping perimeter region
-                
-                // printfn "area x perimeter (total) %A" (char,Seq.length region, Seq.length part2Perimeters+ Seq.length insidePerimeterSides)
-                // if (char = 'M') then printfn "fuck %A" (insidePerimeterSides |> Seq.toList)
-                // if (char = 'R') then printfn "fuck %A" (insidePerimeterSides |> Seq.toList)
-                // if (char = 'A') then printfn "fuck %A" (Seq.length part2Perimeters, insidePerimeterSides |> Seq.length)
-                // if (char = 'A') then (insidePerimeterSides |> Seq.toList) |> Seq.iter (printfn "fuck %A") 
-
-                Seq.length region * (Seq.length part2Perimeters + Seq.length insidePerimeterSides)
+            |> Seq.sumBy (fun (char,region,_) -> 
+                let part2Perimeters = solvePart2 region
+                // printfn "perimeter %A" (char,Seq.length region, part2Perimeters)
+                Seq.length region * part2Perimeters
+                // part2Perimeters
             )
         part2Ans |> (printfn "part2Ans: %A \n")
         
