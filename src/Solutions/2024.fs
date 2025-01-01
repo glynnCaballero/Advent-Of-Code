@@ -1003,6 +1003,63 @@ module Day12 =
                 Seq.length region * part2Perimeters
             )
         part2Ans |> (printfn "part2Ans: %A \n")
+
+module Day13 =
+    let splitIntoCoordinates (s: string) (operator: string) = 
+        let sSplit = s.Split(":") |> Seq.last
+        let coordinates = 
+            sSplit.Split(",")
+            |> Seq.map (fun el -> el.Split(operator) |> Seq.last )
+            |> Seq.toList
+        
+        match coordinates with
+        | [moveX;moveY] -> (int (moveX.Trim()),int (moveY.Trim()))
+        | _ -> (-1,-1)
+        // coordinates
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+            |> Seq.chunkBySize 4
+            |> Seq.map (fun chunk -> 
+                match chunk with
+                | [|buttonA;buttonB;target;_|] -> Some((splitIntoCoordinates buttonA "+",splitIntoCoordinates buttonB "+",splitIntoCoordinates target "="))
+                | [|buttonA;buttonB;target|] -> Some((splitIntoCoordinates buttonA "+",splitIntoCoordinates buttonB "+",splitIntoCoordinates target "="))
+                | _ -> None
+            )
+            |> Seq.choose id
+        printf "\ninput: %A \n" input
+        
+        let output = 
+            input
+            |> Seq.map (fun (buttonA,buttonB,target) -> 
+                let aX,aY = buttonA
+                let bX,bY = buttonB
+                let tX,tY = target
+                let part2TargetX,part2TargetY = (10000000000000L) + ((int64) tX),(10000000000000L) + ((int64) tY)
+                let mutable result = List.empty
+                for i in 1 .. 100 do
+                    for j in 0 .. 100 do
+                        let currentX = (i*aX) + (j*bX)
+                        let currentY = (i*aY) + (j*bY)
+                        if currentX = tX && currentY = tY then
+                            result <- (i,j) :: result
+                    
+                printfn ("somethin %A") (part2TargetX,part2TargetY)
+                result
+            )
+            |> Seq.sumBy (fun el -> 
+                if Seq.length el > 1 then printfn "%A" el
+                if Seq.length el > 0 then
+                    let x,y = el |> Seq.head
+                    (x*3)+y
+                else 
+                    0
+            )
+
+        input |> Seq.iter (printfn "output: %A \n")
+        output |> (printfn "output: %A \n")
+
         
         
 // ------------------------------ TEMPLATE ------------------------------ //
@@ -1011,11 +1068,10 @@ module Template =
     let solve filePath =
         let input = 
             File.ReadLines filePath
-        
+        printf "\ninput: %A \n" input        
         
         let output = 
             input
             
 
-        printf "\ninput: %A \n" input
         output |> Seq.iter (printfn "output: %A \n")
