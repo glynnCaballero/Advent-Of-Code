@@ -921,6 +921,15 @@ module Day12 =
                 result <- region :: result
         result
 
+    // Count the sides idea. Keep track of the boundary tiles of the region and it's excess (adjacent off region tile) for the direction of the side (horizantal or veritcal side).
+    // For each side tile (inRegionTile,boundaryTile) group them together by their adjacent neighbour side tiles.
+    // It's an adjacent neighbour side tile: if the inRegionTile is adjacent to the current side tile, and the boundary tile of the inRegionTile and the current tiles's boundary tile are also adjacent.
+    // E.g. say we have a corner region [(0,0),(1,0),(0,1)]; we have a boundary of [((0,0), (0,-1)),((0,0),(-1,0)),((1,0),(1,-1)),((0,1),(-1,0))]
+    // Say we pick ((0,0),(-1,0)), then the adjacent tiles of inRegion tile are [((1,0),(,-1)),((0,1),(-1,0))]. 
+    // Find the neighbours in region tiles of (0,0) = [(1,0),(0,1)] = [((1,0),(,-1)),((0,1),(-1,0))]
+    // neighbours boundary tile (-1,0) = [(-1,0)] = [((0,1),(-1,0))]
+    // The applicable neighbours are the intersect of both neighbours set = [((0,1),(-1,0))] (in this case, but every side tile that appear in both lists belong to the same side)
+    // Both (0,-1) side tiles are added to the same side collection and no longer considered in following iterations. Leaving only the remaining sides [((0,0), (0,-1)),((1,0),(1,-1)))]
     let solvePart2 (region: HashSet<Tuple<_,int,int>>) = 
         let inRegion (x,y) = region |> Seq.exists (fun (_,x1,y1) -> x1=x&&y1=y)
         
@@ -940,22 +949,24 @@ module Day12 =
         let mutable visitedEdges = new HashSet<Tuple<Tuple<_,int,int>,Tuple<int,int>>>()
         let rec getGrouping edge (currentGrouping: HashSet<Tuple<Tuple<_,int,int>,Tuple<int,int>>>) = 
             let (_,x,y),boundaryCoordinate = edge
-            let coordinateNeighbours = getNeighbours (x,y) |> Seq.collect (isRegionBoundaryNeighbours)
+            let inRegionNeighbours = getNeighbours (x,y) |> Seq.collect (isRegionBoundaryNeighbours)
             let boundaryNeighbours = getNeighbours boundaryCoordinate |> Seq.collect (isBoundaryNeighbours)
             
             visitedEdges.Add(edge) |> ignore
             currentGrouping.Add(edge) |> ignore
             
             // printfn "Current Edge %A" edge
-            // printfn "Coordinate Neighbours %A \nBoundary Neighbours %A" coordinateNeighbours boundaryNeighbours
+            // printfn "Coordinate Neighbours %A \nBoundary Neighbours %A" inRegionNeighbours boundaryNeighbours
             
-            if Seq.length coordinateNeighbours = 0 || Seq.length boundaryNeighbours = 0 then 
+            if Seq.length inRegionNeighbours = 0 || Seq.length boundaryNeighbours = 0 then 
                 currentGrouping
             else
-                let nextNeighbour = coordinateNeighbours |> Seq.tryFind (fun neighbourEdge -> (boundaryNeighbours |> Seq.contains neighbourEdge) && (currentGrouping.Contains(neighbourEdge) |> not) && (visitedEdges.Contains(neighbourEdge) |> not)) 
-                match nextNeighbour with
-                | Some(edge) -> getGrouping edge currentGrouping 
-                | None -> currentGrouping
+                // Not head. We could start in the middle of a side and need to add both left and right sides (because we started in the middle) on the same side (grouping)
+                let applicableNeighbours = inRegionNeighbours |> Seq.filter (fun neighbourEdge -> (boundaryNeighbours |> Seq.contains neighbourEdge) && (currentGrouping.Contains(neighbourEdge) |> not) && (visitedEdges.Contains(neighbourEdge) |> not)) 
+                let mutable result = currentGrouping
+                for coord in applicableNeighbours do
+                    result <- getGrouping coord currentGrouping
+                result
 
         let mutable sides = []
         for edge in regionBoundary do
@@ -964,7 +975,7 @@ module Day12 =
 
         // printfn "side %A" (regionBoundary)
 
-        sides |> Seq.distinct |> Seq.length
+        sides |> Seq.length
 
     let solvePart1 input =
         let regions = findRegions input
@@ -990,7 +1001,6 @@ module Day12 =
                 let part2Perimeters = solvePart2 region
                 // printfn "perimeter %A" (char,Seq.length region, part2Perimeters)
                 Seq.length region * part2Perimeters
-                // part2Perimeters
             )
         part2Ans |> (printfn "part2Ans: %A \n")
         
