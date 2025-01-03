@@ -1015,7 +1015,38 @@ module Day13 =
         match coordinates with
         | [moveX;moveY] -> (int (moveX.Trim()),int (moveY.Trim()))
         | _ -> (-1,-1)
-        // coordinates
+    
+
+    // using the tx%GCD(aX,bX)=0 didn't work because it solves each equation individually and doesn't check the consistency of both equations.
+    // And still has to use the determinenet (aY*bX - aX*bY) to check (ty*bX - tx*bY) % (aY*bX - aX*bY) = 0  checks the consistency of both equations.
+    let doMathStuff ((aX,aY),(bX,bY),(tx:int64,ty:int64)) = 
+        // let tx = (i*aX) + (j*bX)
+        // tx - (i*aX) = (j*bX)
+        // (tx - (i*aX))/bX = j
+        //  
+        // let ty = (i*aY) + (j*bY)
+        // ty = (i*aY) + (((tx - (i*aX))/bX)*bY)
+        // ty = (i*aY) + (tx*bY - (i*aX*bY)/bX))
+        // ty - (i*aY) =  (tx*bY - (i*aX*bY)/bX))
+        // ty*bX - i*aY*bX =  tx*bY - (i*aX*bY)
+        // ty*bX - tx*bY  =  i*aY*bX - i*aX*bY
+        // ty*bX - tx*bY  =  i(aY*bX - aX*bY)
+        // (ty*bX - tx*bY)/(aY*bX - aX*bY)  =  i
+        
+        let i = (ty*bX - tx*bY) / (aY*bX - aX*bY)
+        let j = (tx - (i*aX))/bX
+        let isValid = ((ty*bX - tx*bY) % (aY*bX - aX*bY)) = 0 && (((tx - (i*aX))%bX) = 0)
+        
+        if isValid then (i,j) else (0L,0L) 
+
+    let solvePart2 input = 
+            input
+            |> Seq.map (fun ((aX,aY),(bX,bY),(tX,tY)) -> ((int64 aX,int64 aY),(int64 bX, int64 bY),((10000000000000L) + ((int64) tX),(10000000000000L) + ((int64) tY))))
+            // |> Seq.map (fun ((aX,aY),(bX,bY),(tX,tY)) -> ((int64 aX,int64 aY),(int64 bX, int64 bY),(((int64) tX),((int64) tY))))
+            |> Seq.map doMathStuff
+            // |> Seq.sumBy (fun (x,y) -> 
+            //     (x*3L)+y
+            // )
 
     let solve filePath =
         let input = 
@@ -1030,13 +1061,12 @@ module Day13 =
             |> Seq.choose id
         printf "\ninput: %A \n" input
         
-        let output = 
+        let part1Ans = 
             input
             |> Seq.map (fun (buttonA,buttonB,target) -> 
                 let aX,aY = buttonA
                 let bX,bY = buttonB
                 let tX,tY = target
-                let part2TargetX,part2TargetY = (10000000000000L) + ((int64) tX),(10000000000000L) + ((int64) tY)
                 let mutable result = List.empty
                 for i in 1 .. 100 do
                     for j in 0 .. 100 do
@@ -1045,7 +1075,6 @@ module Day13 =
                         if currentX = tX && currentY = tY then
                             result <- (i,j) :: result
                     
-                printfn ("somethin %A") (part2TargetX,part2TargetY)
                 result
             )
             |> Seq.sumBy (fun el -> 
@@ -1056,10 +1085,36 @@ module Day13 =
                 else 
                     0
             )
+        part1Ans |> (printfn "part1Ans: %A \n")
+        let part2Ans = solvePart2 input 
 
-        input |> Seq.iter (printfn "output: %A \n")
-        output |> (printfn "output: %A \n")
+        
+        part2Ans |> (printfn "\npart2Ans: %A \n")
 
+module Day14 =
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+        printf "\ninput: %A \n" input        
+        
+        let output = 
+            input
+
+        let width = 11
+        let height = 7
+            
+        for y in 1..height do
+            printf "\n"
+            for x in 1..width do
+                let xMid = (1 + width) / 2
+                let yMid = (1 + height) / 2
+                if xMid <> x && yMid <> y then
+                    printf "."
+                else 
+                    printf " "
+
+        // output |> Seq.iter (printfn "output: %A \n")
         
         
 // ------------------------------ TEMPLATE ------------------------------ //
