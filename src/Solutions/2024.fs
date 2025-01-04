@@ -1140,7 +1140,7 @@ module Day14 =
         let yMid = (1 + height) / 2
 
         let answer = solvePart1 input (width,height) 100
-        let part1Ans = 
+        let part1Ans answer = 
             answer
             |> Seq.fold (fun (acc: Map<string,int>) (x,y) ->
                 if y = yMid-1 || x = xMid-1 then
@@ -1158,19 +1158,31 @@ module Day14 =
             ) (Map.empty.Add("topLeft",0).Add("topRight",0).Add("bottomLeft",0).Add("bottomRight",0))
             
             |> Seq.fold (fun acc x -> acc*x.Value) 1
-        printfn "part1Ans: %A" part1Ans
+        printfn "\npart1Ans: %A" (part1Ans answer)
 
-        let coordLookup = set answer
+        // This one was fucked. Had no idea what assumptions to make to even guess the part 2 answer. Thank god for geniuses on the internet!
+        // let mutable part2Something = Int32.MaxValue
+        for t in 0..100000 do
+            let part2Ans = solvePart1 input (width,height) t |> set
+            if Set.count part2Ans = Seq.length input then printf $"\n\n part2Ans: {t} \n" // Assume no overlap when the tree is drawn
+            
+            
+            // assume as the tree starts to form, the robots begin to get closer together and quadrant score get's less and less. 
+            // let part2Ans1 = part1Ans part2Ans
+            // if part2Ans1 < part2Something then 
+            //     printf $"\n\n part2Ans: {t} \n"
+            //     part2Something <- part2Ans1
 
+        
+        let coordLookup = solvePart1 input (width,height) 7093 |> set // 7093, 17496, 27899
         for y in 1..height do
             printf "\n"
             for x in 1..width do
-                if xMid <> x && yMid <> y then
-                    printf (if coordLookup.Contains(x-1,y-1)  then "P" else ".")
-                else 
-                    printf " "
-
-        // (printfn "\n test: %A")  (applyVelocityLogic ((2,4),(2,-3)) (width,height) 5)
+                // if xMid <> x && yMid <> y then
+                //     printf (if coordLookup.Contains(x-1,y-1)  then "P" else ".")
+                // else 
+                //     printf " "
+                printf (if coordLookup.Contains(x-1,y-1)  then "#" else ".")
         
         
 // ------------------------------ TEMPLATE ------------------------------ //
