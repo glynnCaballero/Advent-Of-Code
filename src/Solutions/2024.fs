@@ -1086,35 +1086,91 @@ module Day13 =
                     0
             )
         part1Ans |> (printfn "part1Ans: %A \n")
-        let part2Ans = solvePart2 input 
 
-        
+        let part2Ans = solvePart2 input 
         part2Ans |> (printfn "\npart2Ans: %A \n")
 
 module Day14 =
+    let toTuple a =
+        match a with
+        | [|a;b|] -> (int a, int b)
+        | _ -> (-1,-1)
+
+    let applyVelocityLogic ((px,py),(vx,vy)) (width,length) t = 
+        let xFull = px + (t*vx)
+        let yFull = py + (t*vy)
+        let xMod = (xFull % width) 
+        let yMod = (yFull % length)
+
+        let xFinal = 
+            if xFull > width || xMod = 0 then xMod 
+            elif xFull < 0  then width + xMod
+            else xMod
+        let yFinal = 
+            if yFull > length || yMod = 0 then yMod 
+            elif yFull < 0 then length + yMod
+            else yMod
+
+        // if yFinal = 7 then printfn " fuckkk %A" (length,(px,py),(xFull,yFull))
+        (xFinal,yFinal)
+
+    let solvePart1 input widthLength t = 
+        input |> Seq.map (fun coords -> applyVelocityLogic coords widthLength t)
 
     let solve filePath =
         let input = 
             File.ReadLines filePath
+            |> Seq.map(fun el -> 
+                let sides = el.Split(" ")
+                match sides with
+                | [|p;v|] -> 
+                    let pString,vString = p.Replace("p=", ""),v.Replace("v=", "")
+                    let pArray,vArray = pString.Split(","), vString.Split(",")
+                    Some(toTuple(pArray),toTuple(vArray))
+                | _ -> None
+                // sides
+            )
+            |> Seq.choose id
         printf "\ninput: %A \n" input        
         
-        let output = 
-            input
+        
+        let width = 101
+        let height = 103
+        let xMid = (1 + width) / 2
+        let yMid = (1 + height) / 2
 
-        let width = 11
-        let height = 7
+        let answer = solvePart1 input (width,height) 100
+        let part1Ans = 
+            answer
+            |> Seq.fold (fun (acc: Map<string,int>) (x,y) ->
+                if y = yMid-1 || x = xMid-1 then
+                    acc
+                elif y < yMid-1 then
+                    if x < xMid-1 then
+                        Map.add "topLeft" (acc["topLeft"]+1) acc
+                    else
+                        Map.add "topRight" (acc["topRight"]+1) acc
+                else 
+                    if x < xMid-1 then
+                        Map.add "bottomLeft" (acc["bottomLeft"]+1) acc
+                    else
+                        Map.add "bottomRight" (acc["bottomRight"]+1) acc
+            ) (Map.empty.Add("topLeft",0).Add("topRight",0).Add("bottomLeft",0).Add("bottomRight",0))
             
+            |> Seq.fold (fun acc x -> acc*x.Value) 1
+        printfn "part1Ans: %A" part1Ans
+
+        let coordLookup = set answer
+
         for y in 1..height do
             printf "\n"
             for x in 1..width do
-                let xMid = (1 + width) / 2
-                let yMid = (1 + height) / 2
                 if xMid <> x && yMid <> y then
-                    printf "."
+                    printf (if coordLookup.Contains(x-1,y-1)  then "P" else ".")
                 else 
                     printf " "
 
-        // output |> Seq.iter (printfn "output: %A \n")
+        // (printfn "\n test: %A")  (applyVelocityLogic ((2,4),(2,-3)) (width,height) 5)
         
         
 // ------------------------------ TEMPLATE ------------------------------ //
@@ -1125,8 +1181,6 @@ module Template =
             File.ReadLines filePath
         printf "\ninput: %A \n" input        
         
-        let output = 
+        let part1Ans = 
             input
-            
-
-        output |> Seq.iter (printfn "output: %A \n")
+        part1Ans |> Seq.iter (printfn "part1Ans: %A \n")
