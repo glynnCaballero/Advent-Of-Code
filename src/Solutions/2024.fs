@@ -786,8 +786,6 @@ module Day11 =
                             |> Array.splitAt (stringNum.Length / 2) 
                             |> (fun (a,b) -> String.Concat a, String.Concat b)
                             |> (fun (a,b) -> int64 a, int64 b)
-                        // printfn "something %A" (stringNum, stringNum.Length / 2)
-
                         [a;b]
                     | x -> [x*2024L]
                 result
@@ -795,7 +793,7 @@ module Day11 =
         )
 
     // The big problem with this is the size of nums. At around depth (blinkCount) > 25 it gets way too big. Which when enumerated on, I think, causes the slowness.
-    // Even with the dict on the atomic lookup, it cost too much to keep in memory and keep expanding the nums collection and deriving properties off it etc.
+    // Even with the dict on the atomic lookup, it cost too much to keep in memory and keep expanding the nums collection and deriving properties (children count) off it.
     let rec blinkByAmount nums blinkCount blinkTarget = 
         printf "blink: %A\n" (Seq.length nums, blinkCount)
         seq {
@@ -810,7 +808,7 @@ module Day11 =
         }
 
     /// Don't actually expand the nums collection. Calculate the number of children of each num at a certain depth.
-    /// Important! store the depth (blinkCount) and the num because at different depths the num will have different return values. E.g. blink2 (17,1) = 2, blink2 (17,4) = 4, blink2 (17,7) = 9 etc.   
+    /// Important! store the depth (blinkCount) and the num because at different depths the num will have different return values. E.g. blink2 (17,1) = 2 children, blink2 (17,4) = 4, blink2 (17,7) = 9 etc.   
     /// Can't do layer by layer calcs, as we no longer return the actual children, so we can't calculate the intermediate results (direct children's children) anymore. Instead blink2 aggregates the count already.
     /// The dict is key for part 2, even depth 25 without it is still too slow. The sub tree calculations are too much to recalculate at large depths.
     let rec solvePart2 nums blinkTarget =
@@ -819,7 +817,7 @@ module Day11 =
         let rec  blink2 num blinkCount = 
             printfn "numCalc %A" (num,blinkCount,localDict.ContainsKey((num,blinkCount)))
             if blinkCount = blinkTarget then
-                1L
+                1L // Terminal root or node, no need to expand or modify. 
             elif localDict.ContainsKey((num,blinkCount)) then
                 localDict[(num,blinkCount)]
             else
@@ -833,7 +831,8 @@ module Day11 =
                             |> Array.splitAt (stringNum.Length / 2) 
                             |> (fun (a,b) -> String.Concat a, String.Concat b)
                             |> (fun (a,b) -> int64 a, int64 b)
-                        (blink2 (a) (blinkCount + 1)) + blink2 (b) (blinkCount + 1)
+                        // say the num was "71" -> split into ["7";"1"] -> turn back into ints -> then sum the children count of 7 and 1
+                        (blink2 a (blinkCount + 1)) + blink2 b (blinkCount + 1)
                     | x -> blink2 (x*2024L) (blinkCount + 1)
                 localDict.Add((num,blinkCount), result)
                 result
@@ -854,14 +853,13 @@ module Day11 =
             |> (fun el -> el.Split(" "))
             |> Seq.map (int64)
             |> Seq.toList
-        
-        
-        let output = blinkByAmount ( input) 0 75 |> Seq.length // part1Ans
-        // let output = solvePart2 input 75
-            
-
         printf "\ninput: %A \n" input
-        output |> (printfn "output: %A \n")
+        
+        let part1Ans = blinkByAmount ( input) 0 25 |> Seq.length
+        part1Ans |> (printfn "part1Ans: %A \n")
+
+        let part2Ans = solvePart2 input 75
+        part2Ans |> (printfn "part2Ans: %A \n")
 
 module Day12 =
     open System.Collections.Generic
@@ -922,14 +920,17 @@ module Day12 =
         result
 
     // Count the sides idea. Keep track of the boundary tiles of the region and it's excess (adjacent off region tile) for the direction of the side (horizantal or veritcal side).
-    // For each side tile (inRegionTile,boundaryTile) group them together by their adjacent neighbour side tiles.
-    // It's an adjacent neighbour side tile: if the inRegionTile is adjacent to the current side tile, and the boundary tile of the inRegionTile and the current tiles's boundary tile are also adjacent.
-    // E.g. say we have a corner region [(0,0),(1,0),(0,1)]; we have a boundary of [((0,0), (0,-1)),((0,0),(-1,0)),((1,0),(1,-1)),((0,1),(-1,0))]
-    // Say we pick ((0,0),(-1,0)), then the adjacent tiles of inRegion tile are [((1,0),(,-1)),((0,1),(-1,0))]. 
-    // Find the neighbours in region tiles of (0,0) = [(1,0),(0,1)] = [((1,0),(,-1)),((0,1),(-1,0))]
-    // neighbours boundary tile (-1,0) = [(-1,0)] = [((0,1),(-1,0))]
-    // The applicable neighbours are the intersect of both neighbours set = [((0,1),(-1,0))] (in this case, but every side tile that appear in both lists belong to the same side)
-    // Both (0,-1) side tiles are added to the same side collection and no longer considered in following iterations. Leaving only the remaining sides [((0,0), (0,-1)),((1,0),(1,-1)))]
+    // A boundary tile is defined by having one offRegion neighbour.
+    // For each boundary tiles (inRegionTile,offRegionTile) group them together by their adjacent neighbouring boundary tiles.
+    // It's an adjacent neighbour tile: if the neighbour's inRegionTile is adjacent to the current side tile, and the neighbour's offRegionTile tile and the current tiles's offRegionTile tile are also adjacent.
+
+    // E.g. say we have a corner region [(0,0),(1,0),(0,1)]; we have a boundary of [((0,0),(0,-1)), ((0,0),(-1,0)), ((1,0),(1,-1)), ((0,1),(-1,1))]
+    // Say we pick ((0,0),(-1,0)),
+    // Find the inRegion neighbours of the current tile (0,0) = adjacent inRegionTiles -> [(1,0), (0,1)] = with offRegionTiles -> [((1,0),(1,-1)), ((0,1),(-1,1))]
+    // Find the offRegion neighbours of the current tile's offRegionTile (-1,0) = adjacent offRegiontiles -> [(-1,1)] = with inRegionTiles -> [((0,1),(-1,1))]
+    // The applicable neighbours of current tile with direction are the intersect of both neighbours set = [ ((0,1),(-1,1)) ] - in this case, but every side tile that appear in both lists belong to the same side. e.g. when we start in the middle of the boundary of another region we would pick up the left and right (or up and down) neighbours 
+    // Both (-1,0) boundary tiles, the corner tile (0,0) with the left offRegion (-1,0) and it's neighbouring tile ((0,1),(-1,1)), are added to the same side collection and no longer considered in following iterations. 
+    // Leaving only the remaining sides [((0,0), (0,-1)), ((1,0),(1,-1)))] to group into one side.
     let solvePart2 (region: HashSet<Tuple<_,int,int>>) = 
         let inRegion (x,y) = region |> Seq.exists (fun (_,x1,y1) -> x1=x&&y1=y)
         
@@ -961,7 +962,7 @@ module Day12 =
             if Seq.length inRegionNeighbours = 0 || Seq.length boundaryNeighbours = 0 then 
                 currentGrouping
             else
-                // Not head. We could start in the middle of a side and need to add both left and right sides (because we started in the middle) on the same side (grouping)
+                // Not head. We could start in the middle of a side and need to add both left and right sides (because we started in the middle) on the same side 
                 let applicableNeighbours = inRegionNeighbours |> Seq.filter (fun neighbourEdge -> (boundaryNeighbours |> Seq.contains neighbourEdge) && (currentGrouping.Contains(neighbourEdge) |> not) && (visitedEdges.Contains(neighbourEdge) |> not)) 
                 let mutable result = currentGrouping
                 for coord in applicableNeighbours do
@@ -1128,7 +1129,6 @@ module Day14 =
                     let pArray,vArray = pString.Split(","), vString.Split(",")
                     Some(toTuple(pArray),toTuple(vArray))
                 | _ -> None
-                // sides
             )
             |> Seq.choose id
         printf "\ninput: %A \n" input        
@@ -1210,10 +1210,8 @@ module Day15 =
             else -1
         let mutable fx = x
         let mutable fy = y
-
         let mutable grid = grid
 
-        
         for cy in [ty.. dy ..y] do
             for cx in [tx.. dx ..x] do
                 let nx = cx + (if cx <> x then dx else 0) // to stop the swapping of the original players position to the one opposite the direction. 
@@ -1227,39 +1225,19 @@ module Day15 =
                 if nextChar = "@" then 
                     fx <- cx
                     fy <- cy
-        
 
         grid,fx,fy
 
-    let rec tryFindFreeChar startingIndex (a: string array) direction = 
-        let currentChar = a |> Array.tryItem startingIndex
+    let rec tryFindFreeChar index a direction = 
+        let currentChar = a |> Array.tryItem index
         match currentChar with
-        | Some(".") -> Some(startingIndex)
+        | Some(".") -> Some(index)
         | Some("#") | None -> None
-        | Some(_) -> tryFindFreeChar (startingIndex + direction) a direction
+        | Some(_) -> tryFindFreeChar (index + direction) a direction
 
-    let solve filePath =
-        let input = 
-            File.ReadLines filePath
-        (printf "\n")
-        let grid = 
-            input 
-            |> Seq.takeWhile(fun el -> el <> "")
-            |> Seq.map (fun el -> el.ToCharArray() |> Array.map (string))
-            |> Seq.toArray
-        let moves = input |> Seq.skipWhile(fun el -> el <> "")
-        let initialPlayerPosition = 
-            grid 
-            |> Seq.findIndex(fun el -> Array.contains ("@") el)
-            |> (fun y -> 
-                let row = grid[y]
-                let x = row |> Seq.findIndex(fun el -> el = "@")
-                (x,y)
-            )
-        let printGrid grid = grid |> Seq.iter (printf "input: %A\n")
-        printGrid grid        
-        (printf "\ninitial player: %A \n\n") initialPlayerPosition
+    let printGrid grid = grid |> Seq.iter (printf "input: %A\n")
 
+    let solvePart1 initialPlayerPosition grid moves = 
         let mutable currentPosition = initialPlayerPosition
         let mutable currentGrid = Array.copy grid |> Array.map (fun el -> Array.copy el)
         for m in moves do
@@ -1296,27 +1274,48 @@ module Day15 =
                         else None
                     
                     if freeSpaceCoords.IsSome then
-                            let fx,fy =  freeSpaceCoords.Value
-                            let g,x1,y1 = updateGridRange currentGrid (x,y) (fx,fy)
-                            currentGrid <- g
-                            currentPosition <- (x1,y1)
-                            printf "free space %A" ((fx,fy), (x,y))
+                        let fx,fy =  freeSpaceCoords.Value
+                        let g,x1,y1 = updateGridRange currentGrid (x,y) (fx,fy)
+                        currentGrid <- g
+                        currentPosition <- (x1,y1)
+                        printf "free space %A \n" ((fx,fy), (x,y))
 
-                
-                printf "\n %A \n" (move, (nx,ny))
+                printf "%A \n" (move, (nx,ny))
                 // printGrid currentGrid
                 
-        let part1Ans = 
-            currentGrid
-            |> Seq.mapi (fun y row -> 
-                row 
-                |> Seq.mapi(fun x s -> if s = "O" then Some(x,y) else None )
-                |> Seq.choose id
+        
+        currentGrid
+        |> Seq.mapi (fun y row -> 
+            row 
+            |> Seq.mapi(fun x s -> if s = "O" then Some(x,y) else None )
+            |> Seq.choose id
+        )
+        |> Seq.collect id
+        |> Seq.map (fun (x,y) -> (100*y)+x)
+        |> Seq.sum
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+        (printf "\n")
+        let grid = 
+            input 
+            |> Seq.takeWhile(fun el -> el <> "")
+            |> Seq.map (fun el -> el.ToCharArray() |> Array.map (string))
+            |> Seq.toArray
+        let moves = input |> Seq.skipWhile(fun el -> el <> "")
+        let initialPlayerPosition = 
+            grid 
+            |> Seq.findIndex(fun el -> Array.contains ("@") el)
+            |> (fun y -> 
+                let row = grid[y]
+                let x = row |> Seq.findIndex(fun el -> el = "@")
+                (x,y)
             )
-            |> Seq.collect id
-            |> Seq.map (fun (x,y) -> (100*y)+x)
-            |> Seq.toList
-            |> Seq.sum
+        printGrid grid        
+        (printf "\ninitial player: %A \n\n") initialPlayerPosition
+                
+        let part1Ans = solvePart1 initialPlayerPosition grid moves
         (printfn "\n\n part1Ans: %A \n") part1Ans
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
