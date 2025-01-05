@@ -1184,14 +1184,147 @@ module Day14 =
                 //     printf " "
                 printf (if coordLookup.Contains(x-1,y-1)  then "#" else ".")
         
+module Day15 =
+    let getDirection a = 
+        match a with
+        | '^' -> (0,-1)
+        | '>' -> (1,0)
+        | 'v' -> (0,1)
+        | '<' -> (-1,0)
+        | _ -> (0,0)
+
+    let updateGrid (grid: string array array) (x,y) (nx,ny) (oldChar,newChar) = 
+        grid[y][x] <- oldChar
+        grid[ny][nx] <- newChar
+
+        grid
+
+    let updateGridRange (grid: string array array) (x,y) (tx,ty) = 
+        let dx = 
+            if x > tx then 
+                1
+            else -1
+        let dy = 
+            if y > ty then
+                1
+            else -1
+        let mutable fx = x
+        let mutable fy = y
+
+        let mutable grid = grid
+
         
+        for cy in [ty.. dy ..y] do
+            for cx in [tx.. dx ..x] do
+                let nx = cx + (if cx <> x then dx else 0) // to stop the swapping of the original players position to the one opposite the direction. 
+                let ny = cy + (if cy <> y then dy else 0) // i.e. say the free space is to the right, direction is (-1,0) as we are going from the target back to the original, once we reach the original locaiton (x,y) don't swap (x-1,0) as it's non-applicable.
+
+                let currChar = grid[cy][cx]          
+                let nextChar = grid[ny][nx]
+
+                grid <- updateGrid grid (nx,ny)(cx,cy)(currChar,nextChar)                    
+
+                if nextChar = "@" then 
+                    fx <- cx
+                    fy <- cy
+        
+
+        grid,fx,fy
+
+    let rec tryFindFreeChar startingIndex (a: string array) direction = 
+        let currentChar = a |> Array.tryItem startingIndex
+        match currentChar with
+        | Some(".") -> Some(startingIndex)
+        | Some("#") | None -> None
+        | Some(_) -> tryFindFreeChar (startingIndex + direction) a direction
+
+    let solve filePath =
+        let input = 
+            File.ReadLines filePath
+        (printf "\n")
+        let grid = 
+            input 
+            |> Seq.takeWhile(fun el -> el <> "")
+            |> Seq.map (fun el -> el.ToCharArray() |> Array.map (string))
+            |> Seq.toArray
+        let moves = input |> Seq.skipWhile(fun el -> el <> "")
+        let initialPlayerPosition = 
+            grid 
+            |> Seq.findIndex(fun el -> Array.contains ("@") el)
+            |> (fun y -> 
+                let row = grid[y]
+                let x = row |> Seq.findIndex(fun el -> el = "@")
+                (x,y)
+            )
+        let printGrid grid = grid |> Seq.iter (printf "input: %A\n")
+        printGrid grid        
+        (printf "\ninitial player: %A \n\n") initialPlayerPosition
+
+        let mutable currentPosition = initialPlayerPosition
+        let mutable currentGrid = Array.copy grid |> Array.map (fun el -> Array.copy el)
+        for m in moves do
+            for move in m do
+                let x,y = currentPosition
+                let dx,dy = getDirection move
+                let nx,ny = x+dx,y+dy
+                let nextPositionEl = currentGrid[ny][nx]
+
+                if nextPositionEl = "." then
+                    currentGrid <- updateGrid currentGrid currentPosition (nx,ny) (".","@")
+                    currentPosition <- (nx,ny)
+
+                if nextPositionEl = "O" then
+                    let currentColumn = 
+                        currentGrid 
+                        |> Seq.collect (fun rows -> rows |> Seq.mapi (fun x1 c -> if x1 = x then Some(c) else None)) 
+                        |> Seq.choose id
+                        |> Seq.toArray
+                            
+                    let freeSpaceCoords = 
+                        if move = '>' then
+                            let freeIndex = tryFindFreeChar x currentGrid[y] (1) 
+                            if freeIndex.IsSome then Some(freeIndex.Value, y) else None
+                        elif move = '<' then 
+                            let freeIndex = tryFindFreeChar x currentGrid[y] (-1) 
+                            if freeIndex.IsSome then Some(freeIndex.Value, y) else None
+                        elif move = 'v' then  
+                            let freeIndex = tryFindFreeChar y currentColumn (1)
+                            if freeIndex.IsSome then Some(x, freeIndex.Value) else None
+                        elif move = '^' then  
+                            let freeIndex = tryFindFreeChar y currentColumn (-1)
+                            if freeIndex.IsSome then Some(x, freeIndex.Value) else None
+                        else None
+                    
+                    if freeSpaceCoords.IsSome then
+                            let fx,fy =  freeSpaceCoords.Value
+                            let g,x1,y1 = updateGridRange currentGrid (x,y) (fx,fy)
+                            currentGrid <- g
+                            currentPosition <- (x1,y1)
+                            printf "free space %A" ((fx,fy), (x,y))
+
+                
+                printf "\n %A \n" (move, (nx,ny))
+                // printGrid currentGrid
+                
+        let part1Ans = 
+            currentGrid
+            |> Seq.mapi (fun y row -> 
+                row 
+                |> Seq.mapi(fun x s -> if s = "O" then Some(x,y) else None )
+                |> Seq.choose id
+            )
+            |> Seq.collect id
+            |> Seq.map (fun (x,y) -> (100*y)+x)
+            |> Seq.toList
+            |> Seq.sum
+        (printfn "\n\n part1Ans: %A \n") part1Ans
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
 
     let solve filePath =
         let input = 
             File.ReadLines filePath
-        printf "\ninput: %A \n" input        
+        printf "\ninput: %A \n\n" input        
         
         let part1Ans = 
             input
