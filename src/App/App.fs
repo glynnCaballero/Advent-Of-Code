@@ -19,7 +19,7 @@ let main args =
 
     let problem = results.GetResult(<@ Problem @>, defaultValue = "")
     let demoMode = results.GetResult(<@ Demo @>, defaultValue = true)
-    let problemYear = results.GetResult(<@ Year @>, defaultValue = "2024")
+    let problemYear = results.GetResult(<@ Year @>, defaultValue = "")
     let isDemo = if demoMode then "Demo"  else ""
     let input = $".\\problems\\{problemYear}\\{problem}{isDemo}.txt" 
 
