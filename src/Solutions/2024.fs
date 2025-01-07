@@ -683,21 +683,7 @@ module Day9 =
         output |> (printfn "output: %A \n")
 
 module Day10 =
-    let findNeighbours grid (x,y)  =
-        let length = grid |> Array.length
-        let width = grid |> Array.head |> Array.length
-        let inBoundary (x,y) = x >= 0 && y >= 0 && x < width && y < length
-        [
-            (0,-1);
-            (0,1); 
-            (-1,0);
-            (1,0)   
-        ]
-        |> List.map (fun (dx,dy) -> 
-            let neighbourCoord = (x+dx,y+dy)
-            if (neighbourCoord |> inBoundary) then Some(neighbourCoord) else None
-        )
-        |> List.choose id
+    let findNeighbours grid (x,y)  = Utilities.findNeighbours grid (x,y) |> Seq.toList
 
     // This is a DFS because it exhaust the first neighbours sub tree first. Then the first neighbours first neighbours sub tree etc. then second first neighbour, the second first neighbours subtree etc.
     // BFS goes first neighbours first e.g. first neighbour, second neighbour, first neighbour of first neighbour, first neighbour of second neighbour, first neighbour of the first neighbour of the firstest neighbour etc.
@@ -708,13 +694,12 @@ module Day10 =
         if currentElement = 9 then
             [updatedPath]  // Return the path as a single-item list.
         else
-            let neighbors =
+            let neighbours =
                 findNeighbours grid (x, y)
                 |> List.filter (fun (nx, ny) ->
                     let neighborElement = grid[ny][nx]
                     neighborElement - currentElement = 1
                 )
-            printfn "what %A" ((x,y),neighbors)
             
             // Exhausted paths from (0,0) to first neighbours [(0,1);(1,0)] to the target -> results in [ [] ; [(0,0),(0,1),(0,2),...,(0,4)]
             // If a non target terminal node is encountered, then it will have no neighbours. The empty list is propagating back up to the initiating call.
@@ -722,7 +707,7 @@ module Day10 =
             // If the node has neighbours like the initial call findNine (0,0), the second call (0,1) would return the original path [(0,0),(0,1)] passed down to the findNine (0,4) with the (0,4) appended.
             // Collect would then filter emptys. Can be simplified by using findNine directly into the collect.
             let neighbourOfNeighbours = 
-                neighbors
+                neighbours
                 |> List.map (fun neighbor -> findNine grid neighbor updatedPath)
                 
             neighbourOfNeighbours |> List.iter (fun  el -> el |> printfn "ssss %A %A" (x,y))
@@ -1199,7 +1184,11 @@ module Day15 =
 
         grid
 
-    let updateGridRange (grid: string array array) (x,y) (tx,ty) = 
+    let printGrid grid = grid |> Seq.iter (printf "input: %500A\n")
+
+    // Swap every block from the target (free space "." in front of player if the player is directly facing a block) to the player.
+    // Due to the range, the intial block (x,y) would get swapped again. Even though the player already moved. I.e. the player (x,y) swaps with the next block (x+dx,y+dy) last. Using the range it is not last and swaps with (x-dx,y-dx).
+    let updateGridRange (_grid: string array array) (x,y) (tx,ty) = 
         let dx = 
             if x > tx then 
                 1
@@ -1210,7 +1199,7 @@ module Day15 =
             else -1
         let mutable fx = x
         let mutable fy = y
-        let mutable grid = grid
+        let mutable grid = _grid
 
         for cy in [ty.. dy ..y] do
             for cx in [tx.. dx ..x] do
@@ -1228,14 +1217,13 @@ module Day15 =
 
         grid,fx,fy
 
+    // look ahead in a row or column for the free space.
     let rec tryFindFreeChar index a direction = 
         let currentChar = a |> Array.tryItem index
         match currentChar with
         | Some(".") -> Some(index)
         | Some("#") | None -> None
         | Some(_) -> tryFindFreeChar (index + direction) a direction
-
-    let printGrid grid = grid |> Seq.iter (printf "input: %A\n")
 
     let solvePart1 initialPlayerPosition grid moves = 
         let mutable currentPosition = initialPlayerPosition
@@ -1278,16 +1266,131 @@ module Day15 =
                         let g,x1,y1 = updateGridRange currentGrid (x,y) (fx,fy)
                         currentGrid <- g
                         currentPosition <- (x1,y1)
-                        printf "free space %A \n" ((fx,fy), (x,y))
-
-                printf "%A \n" (move, (nx,ny))
-                // printGrid currentGrid
                 
         
+        currentGrid, 
         currentGrid
         |> Seq.mapi (fun y row -> 
             row 
             |> Seq.mapi(fun x s -> if s = "O" then Some(x,y) else None )
+            |> Seq.choose id
+        )
+        |> Seq.collect id
+        |> Seq.map (fun (x,y) -> (100*y)+x)
+        |> Seq.sum
+
+    let rec findBlockCluster grid (bx,by) (dx,dy) clusterOfBlocks = 
+        let neighbours = 
+            let closingBlock = 
+                let b = grid |> Array.item by |> Array.item bx
+                if b = "]" then (-1,0) else (1,0)
+            let directions =
+                if dx <> 0 then
+                    [
+                        (dx,dy); // another "[" || "]" in the direction of the current block (bx,by).
+                    ]
+                else
+                    [
+                        (dx,dy); 
+                        closingBlock
+                    ] 
+            Utilities.findNeighboursd grid (bx,by) directions
+            |> Seq.map (fun (x,y) ->  ((x,y),grid[y][x]))
+            |> Seq.filter (fun (coord,char) ->  (char = "[" || char = "]") && (Set.contains coord clusterOfBlocks |> not ) )
+
+        if Seq.length neighbours = 0 then
+            clusterOfBlocks
+        else
+            let neighboursNeighbourEtc = 
+                neighbours 
+                |> Seq.fold (fun acc (coord,_) ->
+                    let x,y = coord 
+                    let nextNeighbourCoord = 
+                        if dy <> 0 then 
+                            x,y // when the direction is up or down, we have to go up first, find the corresponding neighbour. Or else we'll pickup side by side blocks e.g. [][ pr ][].  
+                        else 
+                            bx+dx,by+dy // when the direction is left or right, we will naturally run into every block on the same row.  
+                    let clusterOfBlocks = Set.add coord acc
+                    findBlockCluster grid nextNeighbourCoord (dx,dy) clusterOfBlocks
+                ) (Set.add (bx,by) clusterOfBlocks) 
+            
+            Set neighboursNeighbourEtc
+
+    let movePlayer (x,y) (_grid: string array array) move = 
+        let dx,dy  = getDirection(move)
+        let nx =  x + dx
+        let ny =  y + dy
+        let mutable grid = _grid
+        let currChar = grid[y][x]
+        let nextChar = grid[ny][nx]
+        if nextChar = "#" then
+            grid,x,y
+        elif nextChar = "[" || nextChar = "]" then
+            let blocksToMove = findBlockCluster grid (nx,ny) (dx,dy) Set.empty
+            
+            let canMoveBlock = 
+                blocksToMove
+                |> Seq.forall (fun (x,y) -> grid[y+dy][x+dx] <> "#")
+
+            // We are going to swap the free char in front every block in the cluster and player, move the clostest block to the direction edge first to create a free space for the other blocks.
+            let sortedBlocks = 
+                let leftTop =
+                    blocksToMove
+                    |> Set.toSeq 
+                    |> Seq.sortBy(fun (x,y) -> y,x) // left to up
+                if move = '<' || move = '^' then leftTop else Seq.rev leftTop // right first then bottom
+
+            if canMoveBlock then
+                for (x,y) in sortedBlocks do
+                    grid <- updateGrid grid (x+dx,y+dy)(x,y)(grid[y][x],grid[y+dy][x+dx])
+                    
+                grid <- updateGrid grid (nx,ny)(x,y)(currChar,".")
+                grid,nx,ny
+            else
+                grid,x,y
+        else
+            // swap "." with "@" char
+            grid <- updateGrid grid (nx,ny)(x,y)(currChar,nextChar)   
+            grid,nx,ny
+
+    let solvePart2 grid moves = 
+        let mutable currentGrid = 
+            Array.copy grid 
+            |> Array.map (fun el -> Array.copy el)
+            |> Array.map(fun row -> 
+                row 
+                |> Array.collect(fun el -> 
+                    match el with
+                    | "#" ->[|"#";"#"|]
+                    | "O" ->[|"[";"]"|]
+                    | "@" ->[|"@";"."|]
+                    | _ -> [|".";"."|]
+                )
+            )
+        let mutable currentPosition = Utilities.findPositionInGrid currentGrid "@"
+
+        for m in moves do
+            for move in m do
+                let x,y = currentPosition
+                let dx,dy = getDirection move
+                let nx,ny = x+dx,y+dy
+                let nextPositionEl = currentGrid[ny][nx]
+
+                if nextPositionEl = "." then
+                    currentGrid <- updateGrid currentGrid currentPosition (nx,ny) (".","@")
+                    currentPosition <- (nx,ny)
+
+                if nextPositionEl = "[" || nextPositionEl = "]" then
+                    let g,x1,y1 = movePlayer (x,y) currentGrid move
+                    currentGrid <- g
+                    currentPosition <- (x1,y1)
+                
+        
+        currentGrid,
+        currentGrid
+        |> Seq.mapi (fun y row -> 
+            row 
+            |> Seq.mapi(fun x s -> if s = "[" then Some(x,y) else None )
             |> Seq.choose id
         )
         |> Seq.collect id
@@ -1312,11 +1415,15 @@ module Day15 =
                 let x = row |> Seq.findIndex(fun el -> el = "@")
                 (x,y)
             )
+
         printGrid grid        
         (printf "\ninitial player: %A \n\n") initialPlayerPosition
-                
-        let part1Ans = solvePart1 initialPlayerPosition grid moves
+
+        let grid1,  part1Ans = solvePart1 initialPlayerPosition grid moves
         (printfn "\n\n part1Ans: %A \n") part1Ans
+        
+        let grid2, part2Ans = solvePart2 grid moves
+        (printfn "\n\n part2Ans: %A \n") part2Ans
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
 
