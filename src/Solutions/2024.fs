@@ -1424,6 +1424,84 @@ module Day15 =
         
         let grid2, part2Ans = solvePart2 grid moves
         (printfn "\n\n part2Ans: %A \n") part2Ans
+
+module Day16 =
+
+    let solvePart1 (grid : string array array) =
+        let startingPosition = Utilities.findPositionInGrid grid "S" 
+
+        printfn "%A" startingPosition
+
+        let rec findPathsDfs (x,y) currentPath paths =
+            let updatedPath =  (x,y) :: currentPath 
+            if grid[y][x] = "E" then
+                (updatedPath :: paths)
+            else 
+                let neighboursPaths = 
+                    Utilities.findNeighbours grid (x,y)
+                    |> Seq.filter(fun (nx,ny) -> grid[ny][nx] <> "#" && not (List.contains (nx,ny) updatedPath))
+                    |> Seq.toList
+                    |> List.collect (fun neighbour -> findPathsDfs neighbour updatedPath paths)
+                paths @ neighboursPaths
+
+        let rec findPathsBfs queue paths =
+            match queue with
+            | [] -> paths
+            | ((x,y),(cdx,cdy),turnCount,currentPath)::tail ->
+                // printfn "q%A" (grid[y][x])
+                let updatedPath =  (x,y) :: currentPath 
+                if grid[y][x] = "E" then
+                    (updatedPath :: paths)
+                else
+                    let neighbours = 
+                        Utilities.findNeighbours grid (x,y)
+                        |> Seq.filter(fun (nx,ny) -> grid[ny][nx] <> "#" && not (List.contains (nx,ny) updatedPath))
+                        |> Seq.map(fun (nx,ny) -> 
+                            let dx,dy = nx-x,ny-y
+                            let nextTurnCount = if dx <> cdx || dy <> cdy then turnCount + 1 else turnCount
+                            ((nx,ny),(dx,dy),nextTurnCount,updatedPath)
+                        )
+                        |> Seq.toList
+                    let nextQueue = 
+                        tail @ neighbours
+                        |> List.sortBy(fun (p,d,turnCount,_) -> turnCount)
+                    // printfn "Q %A" (nextQueue)
+                    findPathsBfs nextQueue paths
+                    
+        findPathsBfs [(startingPosition,(0,-1),0,[])] []
+        // findPathsDfs startingPosition [] []
+
+    let solve filePath =
+        let grid = 
+            File.ReadLines filePath 
+            |> Seq.map (fun el -> (string el).ToCharArray() |> Array.map (string))
+            |> Seq.toArray
+        printf "\ninput: %500A \n\n" grid   
+        
+        let paths = solvePart1 grid
+        let part1Ans = 
+            paths 
+            |> Seq.filter (Seq.exists (fun (x,y) -> grid[y][x] = "E"))
+            |> Seq.map (fun paths -> 
+                paths 
+                |> Seq.pairwise // Get pairs of consecutive points
+                |> Seq.map (fun ((x1, y1), (x2, y2)) -> (x2 - x1, y2 - y1)) // Compute direction vectors
+                |> Seq.pairwise // Compare consecutive direction vectors
+                |> Seq.toList
+                |> Seq.sumBy(fun (d1,d2) ->
+                    if(d1<>d2) then
+                        1001
+                    else
+                        1
+                )
+                |> (fun x -> x + 1001) // For the initial starting square
+            )
+            |> Seq.toList
+            |> List.sort
+            |> List.min
+            
+        printfn "part1Ans: %A \n" (paths |> Seq.length)
+        printfn "part1Ans: %A \n" part1Ans
 // ------------------------------ TEMPLATE ------------------------------ //
 module Template =
 
@@ -1432,6 +1510,5 @@ module Template =
             File.ReadLines filePath
         printf "\ninput: %A \n\n" input        
         
-        let part1Ans = 
-            input
-        part1Ans |> Seq.iter (printfn "part1Ans: %A \n")
+        let part1Ans = input
+        printfn "part1Ans: %A \n" part1Ans

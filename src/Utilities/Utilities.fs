@@ -20,7 +20,7 @@ let directions =
 
 let findPositionInGrid grid target = 
     grid 
-    |> Seq.findIndex(fun el -> Seq.contains (target) el)
+    |> Seq.findIndex(fun el -> Seq.contains target el)
     |> (fun y -> 
         let row = Seq.toArray grid |>(fun g -> g[y]) 
         let x = row |> Seq.findIndex(fun el -> el = target)
